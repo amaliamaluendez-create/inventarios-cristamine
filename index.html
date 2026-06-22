@@ -12,7 +12,24 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Inventario Cristamine S.A.</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
-<style>:root{--bg:#fff;--bg2:#f5f5f3;--text:#1a1a1a;--text2:#6b6b68;--text3:#a0a09d;--border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.25);--ok-bg:#eaf3de;--ok-text:#3b6d11;--warn-bg:#faeeda;--warn-text:#854f0b;--danger-bg:#fcebeb;--danger-text:#a32d2d;--info-bg:#e6f1fb;--info-text:#185fa5;--r:8px;--rl:12px}
+<style>:root{
+  --bg:#ffffff;
+  --bg2:#f7f3f3;
+  --bg3:#ede8e8;
+  --text:#1a0a0a;
+  --text2:#6b5555;
+  --text3:#b09090;
+  --border:rgba(139,28,28,0.12);
+  --border2:rgba(139,28,28,0.3);
+  --primary:#8B1C1C;
+  --primary-dark:#6B1414;
+  --primary-light:#f2e8e8;
+  --ok-bg:#eaf3de;--ok-text:#3b6d11;
+  --warn-bg:#faeeda;--warn-text:#854f0b;
+  --danger-bg:#fcebeb;--danger-text:#8B1C1C;
+  --info-bg:#e8eef7;--info-text:#1a3a6b;
+  --r:6px;--rl:10px;
+}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:15px}
 .wrap{max-width:520px;margin:0 auto;padding:1rem}
@@ -22,15 +39,15 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 .metric{background:var(--bg2);border-radius:var(--r);padding:.75rem}
 .metric-label{font-size:11px;color:var(--text2);margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em}
 .metric-value{font-size:18px;font-weight:500}
-.metric-value.warn{color:var(--warn-text)}
-.metric-value.info{color:var(--info-text)}
+.metric-value.warn{color:#c0620a}
+.metric-value.info{color:#1a3a6b}
 .planta-bar{display:flex;gap:6px;margin-bottom:1rem;overflow-x:auto;padding-bottom:4px}
 .planta-btn{padding:7px 12px;font-size:12px;font-weight:500;border:0.5px solid var(--border2);border-radius:20px;background:none;cursor:pointer;white-space:nowrap;color:var(--text2)}
-.planta-btn.active{background:var(--text);color:var(--bg);border-color:var(--text)}
-.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:1rem}
+.planta-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-bottom:1rem}
 .tab{padding:10px 2px;font-size:10px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:none;color:var(--text2);border-radius:var(--r);text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
 .tab i{font-size:16px}
-.tab.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+.tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 .panel{display:none}.panel.active{display:block}
 .card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--rl);padding:.875rem;margin-bottom:.875rem}
 .card-title{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.75rem}
@@ -39,12 +56,13 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 .field input,.field select,.field textarea{width:100%;font-size:15px;padding:10px 12px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);-webkit-appearance:none}
 .field textarea{height:56px;resize:none}
 .row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.btn{background:var(--text);color:var(--bg);border:none;border-radius:var(--r);padding:13px;font-size:15px;font-weight:500;cursor:pointer;width:100%;margin-top:4px}
-.btn:active{opacity:.8}
-.btn-sec{background:none;border:0.5px solid var(--border2);border-radius:var(--r);padding:11px;font-size:14px;cursor:pointer;color:var(--text);width:100%;margin-top:4px}
+.btn{background:var(--primary);color:#fff;border:none;border-radius:var(--r);padding:13px;font-size:15px;font-weight:600;cursor:pointer;width:100%;margin-top:4px;letter-spacing:.02em}
+.btn:active{opacity:.85}
+.btn-sec{background:none;border:0.5px solid var(--primary);border-radius:var(--r);padding:11px;font-size:14px;cursor:pointer;color:var(--primary);width:100%;margin-top:4px;font-weight:500}
 .badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:var(--r);font-weight:500;white-space:nowrap}
-.b-ok{background:var(--ok-bg);color:var(--ok-text)}.b-warn{background:var(--warn-bg);color:var(--warn-text)}.b-danger{background:var(--danger-bg);color:var(--danger-text)}.b-info{background:var(--info-bg);color:var(--info-text)}.b-gray{background:var(--bg2);color:var(--text2)}.b-pend{background:#faeeda;color:#854f0b}.b-tr{background:#e8e6fb;color:#4a3db5}
-.toast{background:var(--ok-bg);color:var(--ok-text);border-radius:var(--r);padding:10px 14px;font-size:13px;margin-bottom:.875rem;display:none}
+.b-ok{background:#eaf3de;color:#2d5a0e}.b-warn{background:var(--warn-bg);color:var(--warn-text)}.b-danger{background:#fce8e8;color:#8B1C1C}.b-info{background:#e8eef7;color:#1a3a6b}.b-gray{background:var(--bg2);color:var(--text2)}.b-pend{background:#faeeda;color:#854f0b}
+.b-partial{background:#dce8fb;color:#1a4a8a}.b-tr{background:#e8e6fb;color:#4a3db5}
+.toast{background:#eaf3de;color:#2d5a0e;border-radius:var(--r);padding:10px 14px;font-size:13px;margin-bottom:.875rem;display:none;font-weight:500}
 .item-card{border:0.5px solid var(--border);border-radius:var(--r);padding:.75rem;margin-bottom:6px}
 .item-ref{font-size:10px;color:var(--text2)}
 .item-name{font-size:13px;font-weight:500;margin:2px 0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -66,7 +84,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 .pin-input{font-size:24px;letter-spacing:10px;text-align:center;width:140px;margin-bottom:1rem;padding:8px;border:0.5px solid var(--border2);border-radius:var(--r)}
 .empty{text-align:center;padding:2rem;color:var(--text3);font-size:13px}
 .f-chip{font-size:11px;padding:4px 11px;border-radius:20px;border:0.5px solid var(--border);cursor:pointer;background:none;color:var(--text2);white-space:nowrap}
-.f-chip.active{background:var(--text);color:var(--bg);border-color:var(--text)}</style>
+.f-chip.active{background:var(--primary);color:#fff;border-color:var(--primary)}</style>
 </head>
 <body>
 <div class="wrap">
@@ -81,6 +99,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 <div class="planta-bar" id="planta-bar"></div>
 <div class="tabs">
   <button class="tab active" onclick="showTab('stock',this)"><i class="ti ti-packages"></i>Stock</button>
+  <button class="tab" onclick="showTab('pedidos',this)"><i class="ti ti-send"></i>Pedidos</button>
   <button class="tab" onclick="showTab('oc',this)"><i class="ti ti-file-invoice"></i>OC</button>
   <button class="tab" onclick="showTab('salida',this)"><i class="ti ti-arrow-up-circle"></i>Salida</button>
   <button class="tab" onclick="showTab('transfer',this)"><i class="ti ti-arrow-left-right"></i>Transfer</button>
@@ -116,6 +135,40 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
   </div>
   <div id="stock-list"><div class="empty">Cargando...</div></div>
 </div>
+<div class="panel" id="panel-pedidos">
+  <div class="toast" id="msg-pedido">&#10003; Pedido registrado.</div>
+
+  <!-- Nuevo pedido -->
+  <div class="card">
+    <div class="card-title">&#128233; Nuevo pedido</div>
+    <div class="field"><label>Planta que pide</label><select id="ped-planta" style="font-size:15px;padding:10px 12px" onchange="populateOperadores('ped-operador',this.value)"></select></div>
+    <div class="field"><label>Operador</label><select id="ped-operador" style="font-size:15px;padding:10px 12px"><option value="">-- Tu nombre --</option></select></div>
+    <div class="search-box">
+      <input type="text" id="ped-search" placeholder="Buscá el artículo..." oninput="searchPedidoItem(this.value)" autocomplete="off">
+      <div class="search-results" id="ped-results"></div>
+    </div>
+    <div id="ped-selected" style="display:none;background:var(--bg2);border-radius:var(--r);padding:.75rem;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:500" id="ped-item-name"></div>
+      <div style="font-size:11px;color:var(--text2)" id="ped-item-ref"></div>
+    </div>
+    <div class="field"><label>Cantidad</label><input type="number" id="ped-qty" min="1" value="1" style="font-size:18px"></div>
+    <div class="field"><label>Motivo / equipo</label><input type="text" id="ped-motivo" placeholder="Ej: Cambio filtro excavadora"></div>
+    <div class="field"><label>Urgencia</label>
+      <select id="ped-urgencia" style="font-size:15px;padding:10px 12px">
+        <option value="normal">Normal</option>
+        <option value="urgente">&#128680; Urgente</option>
+      </select>
+    </div>
+    <button class="btn" onclick="registrarPedido()">Enviar pedido</button>
+  </div>
+
+  <!-- Pedidos pendientes -->
+  <div class="card">
+    <div class="card-title">&#128203; Pedidos pendientes de OC</div>
+    <div id="pedidos-pendientes-list"><div class="empty">Sin pedidos pendientes.</div></div>
+  </div>
+</div>
+
 <div class="panel" id="panel-oc">
   <div class="toast" id="msg-oc">&#10003; OC registrada.</div>
   <div class="toast" id="msg-recibida">&#10003; Recepci&#243;n confirmada.</div>
@@ -262,13 +315,13 @@ function nextId(){return ++_idCounter;}
 const PIN='1234';
 const PLANTAS=['Berazategui','Arenal Ibicuy','República','Diamante','Federal','Open Door','San Juan','Conchilla'];
 const OPERADORES={
-  'Berazategui':['José (Pepe)','Fabián Guevara','Fabián Jaurilaca'],
-  'Arenal Ibicuy':['Gustavo Roldán'],
-  'República':['Alfredo Romero','Leandro Alvarenque','Federico Crespien'],
-  'Diamante':['Damián Caizo'],
-  'Federal':['Fabián'],
+  'Berazategui':['José (Pepe)','Pablo Ungaro','Fabián Vergara','Dario Maldonado'],
+  'Arenal Ibicuy':['Gustavo Roldan'],
+  'República':['Alfredo Romero'],
+  'Diamante':['Damian Caisso'],
+  'Federal':['Fabián Hawrylak'],
   'Open Door':['Carlos Obelar'],
-  'San Juan':['Ricardo Bartolomé','Vanesa'],
+  'San Juan':['Ricardo Bartolome','Monica Elizondo'],
   'Conchilla':['Julio Rolleri']
 };
 let inventory=JSON.parse(JSON.stringify(INVENTORY_DATA));
@@ -742,20 +795,138 @@ function confirmarRevisionNuevos(){
   if(resultEl) resultEl.innerHTML=msg;
 }
 
+let pedidos=[];
+let selectedPedidoItem=null;
+
+function searchPedidoItem(q){
+  const res=document.getElementById('ped-results');
+  selectedPedidoItem=null; // Clear selection while typing
+  document.getElementById('ped-selected').style.display='none';
+  if(!q||q.length<2){res.style.display='none';return;}
+  const lq=q.toLowerCase();
+  const m=catalog.filter(it=>it.ref.toLowerCase().includes(lq)||it.name.toLowerCase().includes(lq)).slice(0,8);
+  res.style.display='block';
+  // Always show catalog matches + option to use free text
+  res.innerHTML=m.map((it,i)=>`<div class="sr-item" onclick="selectPedidoItem(${catalog.indexOf(it)})">
+    <span class="sr-ref">${esc(it.ref)}</span>${esc(it.name)}
+  </div>`).join('')+
+  `<div class="sr-item" onclick="selectPedidoLibre('${q.replace(/'/g,"\'")}'')" style="color:var(--text2);font-style:italic">
+    + Pedir: "<strong>${esc(q)}</strong>" (escribir directo)
+  </div>`;
+}
+
+function selectPedidoItem(idx){
+  const it=catalog[idx];
+  if(!it) return;
+  selectedPedidoItem=it.ref;
+  document.getElementById('ped-search').value=it.name;
+  document.getElementById('ped-results').style.display='none';
+  document.getElementById('ped-selected').style.display='block';
+  document.getElementById('ped-item-name').textContent=it.name;
+  document.getElementById('ped-item-ref').textContent=it.ref+' · '+it.cat;
+}
+
+function selectPedidoLibre(nombre){
+  selectedPedidoItem='LIBRE-'+Date.now().toString().slice(-6);
+  document.getElementById('ped-search').value=nombre;
+  document.getElementById('ped-results').style.display='none';
+  document.getElementById('ped-selected').style.display='block';
+  document.getElementById('ped-item-name').textContent=nombre;
+  document.getElementById('ped-item-ref').textContent='Artículo libre (no está en catálogo)';
+}
+
+function registrarPedido(){
+  const planta=document.getElementById('ped-planta')?.value||PLANTAS[0];
+  const operador=document.getElementById('ped-operador')?.value||'';
+  const qty=parseInt(document.getElementById('ped-qty')?.value)||1;
+  const motivo=document.getElementById('ped-motivo')?.value.trim()||'';
+  const urgencia=document.getElementById('ped-urgencia')?.value||'normal';
+  // Si no seleccionó del catálogo, usar lo que escribió directamente
+  const textoBuscado=document.getElementById('ped-search')?.value.trim();
+  if(!selectedPedidoItem){
+    if(!textoBuscado){alert('Escribí o buscá el artículo que necesitás.');return;}
+    selectedPedidoItem='LIBRE-'+Date.now().toString().slice(-6);
+    document.getElementById('ped-selected').style.display='block';
+    document.getElementById('ped-item-name').textContent=textoBuscado;
+    document.getElementById('ped-item-ref').textContent='Artículo libre';
+  }
+  if(!operador){alert('¿Quién hace el pedido?');return;}
+  const nombreLibre=document.getElementById('ped-search')?.value||selectedPedidoItem;
+  const it=catalog.find(c=>c.ref===selectedPedidoItem);
+  const esLibre=selectedPedidoItem.startsWith('LIBRE-');
+  pedidos.push({
+    id:nextId(),
+    ref:esLibre?'':selectedPedidoItem,
+    name:it?it.name:nombreLibre,
+    cat:it?it.cat:'',
+    planta,operador,qty,motivo,urgencia,
+    ts:now(),status:'pendiente'
+  });
+  // Reset
+  selectedPedidoItem=null;
+  document.getElementById('ped-search').value='';
+  document.getElementById('ped-selected').style.display='none';
+  document.getElementById('ped-qty').value=1;
+  document.getElementById('ped-motivo').value='';
+  document.getElementById('ped-urgencia').value='normal';
+  renderPedidosPendientes();
+  updateMetrics();
+  showToast('msg-pedido');
+}
+
+function renderPedidosPendientes(){
+  const el=document.getElementById('pedidos-pendientes-list');
+  if(!el) return;
+  const pend=pedidos.filter(p=>p.status==='pendiente').sort((a,b)=>{
+    if(a.urgencia==='urgente'&&b.urgencia!=='urgente') return -1;
+    if(b.urgencia==='urgente'&&a.urgencia!=='urgente') return 1;
+    return 0;
+  });
+  if(!pend.length){el.innerHTML='<div class="empty">Sin pedidos pendientes.</div>';return;}
+  el.innerHTML=pend.map(p=>`<div class="item-card" style="${p.urgencia==='urgente'?'border-color:var(--danger-text)':''}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+      <div style="flex:1;min-width:0;margin-right:8px">
+        <div style="font-size:13px;font-weight:500">${esc(p.name)}
+          ${p.urgencia==='urgente'?'<span class="badge b-danger">&#128680; Urgente</span>':''}
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">
+          ${esc(p.planta)} &middot; ${esc(p.operador)} &middot; &times;${p.qty} &middot; ${p.ts}
+        </div>
+        ${p.motivo?`<div style="font-size:11px;color:var(--text2)">${esc(p.motivo)}</div>`:''}
+      </div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <input type="text" id="oc-num-ped-${p.id}" placeholder="Nº OC generada" style="flex:1;font-size:13px;padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--r)">
+      <button onclick="cerrarPedido(${p.id})" style="background:var(--text);color:var(--bg);border:none;border-radius:var(--r);padding:8px 12px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap">OC generada</button>
+    </div>
+  </div>`).join('');
+}
+
+function cerrarPedido(id){
+  const p=pedidos.find(x=>Number(x.id)===Number(id));
+  if(!p) return;
+  const ocNum=document.getElementById('oc-num-ped-'+id)?.value.trim();
+  if(!ocNum){alert('Ingresá el número de OC generada.');return;}
+  p.status='oc_generada';
+  p.ocNum=ocNum;
+  p.tsCierre=now();
+  renderPedidosPendientes();
+  updateMetrics();
+}
+
 function initUI(){
   const bar=document.getElementById('planta-bar');
   bar.innerHTML=['Todas',...PLANTAS].map(p=>`<button class="planta-btn ${p==='Todas'?'active':''}" onclick="selectPlanta(this)">${p}</button>`).join('');
-  ['oc-dest','sal-origen','tr-desde','tr-hacia'].forEach(id=>{
+  ['oc-dest','sal-origen','tr-desde','tr-hacia','ped-planta'].forEach(id=>{
     const sel=document.getElementById(id);
     if(sel) sel.innerHTML=PLANTAS.map(p=>`<option>${p}</option>`).join('');
   });
   // Populate operators for default plant
   populateOperadores('sal-quien', PLANTAS[0]);
   populateOperadores('tr-quien', PLANTAS[0]);
-  ['hist-filter'].forEach(id=>{
-    const hf=document.getElementById(id);
-    if(hf) hf.innerHTML='<option value="">Todas las plantas</option>'+PLANTAS.map(p=>`<option>${p}</option>`).join('');
-  });
+  populateOperadores('ped-operador', PLANTAS[0]);
+  const hf=document.getElementById('hist-filter');
+  if(hf) hf.innerHTML='<option value="">Todas las plantas</option>'+PLANTAS.map(p=>`<option>${p}</option>`).join('');
 }
 
 function selectPlanta(el){
@@ -789,7 +960,7 @@ function updateMetrics(){
   });
   document.getElementById('m-items').textContent=con;
   document.getElementById('m-low').textContent=low;
-  document.getElementById('m-oc').textContent=ocList.filter(o=>o.status==='pendiente').length+ocPendientesEnviar.filter(o=>o.status==='pendiente').length;
+  document.getElementById('m-oc').textContent=ocList.filter(o=>o.status==='pendiente'||o.status==='parcial').length+ocPendientesEnviar.filter(o=>o.status==='pendiente').length;
   document.getElementById('m-ars').textContent='$'+fmt(tARS);
   document.getElementById('m-usd').textContent='u$s '+fmtUSD(tUSD);
 }
@@ -871,6 +1042,7 @@ function showTab(id,el){
   if(id==='transfer'){renderTransferList();renderTransfersPendientes();}
   if(id==='salida') renderSalidaList();
   if(id==='oc'){renderOCPendientes();renderOCPendientesEnviar();renderEnViaje();}
+  if(id==='pedidos'){renderPedidosPendientes();}
 }
 
 function solicitarPin(cb){pinCallback=cb;document.getElementById('pin-input').value='';document.getElementById('pin-err').style.display='none';document.getElementById('pin-wrap').style.display='flex';setTimeout(()=>document.getElementById('pin-input').focus(),100);}
@@ -1055,7 +1227,9 @@ function renderOCPendientes(){
   if(!pend.length){el.innerHTML='<div class="empty">Sin OC pendientes.</div>';return;}
   el.innerHTML=pend.map(oc=>`<div class="item-card" data-oc-id="${oc.id}">
     <div style="margin-bottom:8px">
-      <div style="font-size:13px;font-weight:500;margin-bottom:4px">OC ${esc(oc.num)} <span class="badge b-pend">Pendiente</span></div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:4px">OC ${esc(oc.num)} 
+        ${oc.num.includes('(parcial)')?'<span class="badge b-partial">Recibida parcialmente</span>':'<span class="badge b-pend">Pendiente de recibir</span>'}
+      </div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:6px">${esc(oc.prov||'')}${oc.fecha?' &middot; ETA '+oc.fecha:''}</div>
       <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
         <div style="flex:1;min-width:120px">
@@ -1090,8 +1264,9 @@ function recibirOC(id){
   const ops=OPERADORES;
   const plantaOpts=PLANTAS.map((p,i)=>`<option value="${p}">${p}</option>`).join('');
   
-  modal.innerHTML=`<div style="background:var(--bg);border-radius:var(--rl);padding:1.25rem;width:100%;max-width:360px">
-    <div style="font-size:14px;font-weight:500;margin-bottom:1rem">Confirmar recepción OC ${oc.num}</div>
+  modal.innerHTML=`<div style="background:var(--bg);border-radius:var(--rl);padding:1.25rem;width:100%;max-width:400px;max-height:90vh;overflow-y:auto">
+    <div style="font-size:14px;font-weight:500;margin-bottom:4px">Recepción OC ${oc.num}</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:1rem">${esc(oc.prov||'')}</div>
     <div class="field">
       <label>Planta donde llegó</label>
       <select id="modal-planta" style="width:100%;font-size:15px;padding:10px 12px;border:0.5px solid var(--border2);border-radius:var(--r)" onchange="updateModalOps()">
@@ -1104,8 +1279,20 @@ function recibirOC(id){
         <option value="">-- Seleccioná --</option>
       </select>
     </div>
+    <div style="font-size:12px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;margin-top:4px">Cantidades recibidas</div>
+    <div id="modal-items">
+      ${oc.items.map((it,i)=>`<div style="border:0.5px solid var(--border);border-radius:var(--r);padding:.625rem;margin-bottom:6px">
+        <div style="font-size:12px;font-weight:500;margin-bottom:6px">${esc(it.name)}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;color:var(--text2)">Pedido: ${it.qty}</span>
+          <span style="font-size:11px;color:var(--text2)">Recibió:</span>
+          <input type="number" id="modal-qty-${i}" min="0" max="${it.qty}" value="${it.qty}" 
+            style="width:70px;font-size:14px;padding:4px 8px;border:0.5px solid var(--border2);border-radius:var(--r);text-align:center">
+        </div>
+      </div>`).join('')}
+    </div>
     <div style="display:flex;gap:8px;margin-top:1rem">
-      <button onclick="confirmarRecepcionModal(${id})" style="flex:1;background:var(--text);color:var(--bg);border:none;border-radius:var(--r);padding:12px;font-size:14px;font-weight:500;cursor:pointer">&#10003; Confirmar</button>
+      <button onclick="confirmarRecepcionModal(${id})" style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:var(--r);padding:12px;font-size:14px;font-weight:600;cursor:pointer">&#10003; Confirmar</button>
       <button onclick="document.getElementById('recepcion-modal').remove()" style="flex:1;background:none;border:0.5px solid var(--border2);border-radius:var(--r);padding:12px;font-size:14px;cursor:pointer">Cancelar</button>
     </div>
   </div>`;
@@ -1127,35 +1314,58 @@ function confirmarRecepcionModal(id){
   const planta=document.getElementById('modal-planta')?.value;
   const operador=document.getElementById('modal-operador')?.value||'';
   if(!planta){alert('Seleccioná la planta.');return;}
-  
-  // Remove modal
-  const modal=document.getElementById('recepcion-modal');
-  if(modal) modal.remove();
 
   const oc=ocList.find(o=>Number(o.id)===Number(id));
   if(!oc) return;
 
-  oc.status='recibida';
-  const totalQty=oc.items.reduce((a,b)=>a+b.qty,0);
+  // Read actual received quantities per item
+  const itemsRecibidos=[];
+  const itemsPendientes=[];
+  oc.items.forEach((it,i)=>{
+    const qtyRecibida=parseInt(document.getElementById('modal-qty-'+i)?.value)||0;
+    const qtyPendiente=it.qty-qtyRecibida;
+    if(qtyRecibida>0) itemsRecibidos.push({...it,qty:qtyRecibida});
+    if(qtyPendiente>0) itemsPendientes.push({...it,qty:qtyPendiente});
+  });
 
-  if(oc.generaStock!==false){
-    oc.items.forEach(it=>{
-      if(!inventory[it.ref]) inventory[it.ref]={name:it.name,cat:it.cat||'REP',equipo:it.equipo||'',min:it.min||1,precioARS:0,precioUSD:0,stock:Object.fromEntries(PLANTAS.map(p=>[p,0]))};
-      PLANTAS.forEach(p=>{if(inventory[it.ref].stock[p]===undefined) inventory[it.ref].stock[p]=0;});
-      inventory[it.ref].stock[planta]=(inventory[it.ref].stock[planta]||0)+it.qty;
-      if(it.precioARS) inventory[it.ref].precioARS=it.precioARS;
-      if(it.precioUSD) inventory[it.ref].precioUSD=it.precioUSD;
-    });
-    historial.push({ts:now(),tipo:'Entrada',planta,ref:'OC '+oc.num,item:'Recepción OC',qty:totalQty,operador,detalle:(oc.prov||'')+' → '+planta});
-    if(planta!==oc.dest){
-      oc.items.forEach(it=>{inventory[it.ref].stock[planta]-=it.qty;});
-      ocPendientesEnviar.push({id:nextId(),ocNum:oc.num,items:oc.items,desde:planta,hacia:oc.dest,ts:now(),status:'pendiente',generaStock:true});
-      historial.push({ts:now(),tipo:'Pendiente despacho',planta,ref:'OC '+oc.num,item:'Pendiente a '+oc.dest,qty:totalQty,operador,detalle:'Recibido en '+planta+' — pendiente enviar a '+oc.dest});
-    }
+  // Remove modal
+  const modal=document.getElementById('recepcion-modal');
+  if(modal) modal.remove();
+
+  const totalRecibido=itemsRecibidos.reduce((a,b)=>a+b.qty,0);
+  const totalPendiente=itemsPendientes.reduce((a,b)=>a+b.qty,0);
+  const esTotal=itemsPendientes.length===0;
+
+  // Mark OC status
+  if(esTotal){
+    oc.status='recibida';
   } else {
-    historial.push({ts:now(),tipo:'Uso directo',planta,ref:'OC '+oc.num,item:'Recepción OC',qty:totalQty,operador,detalle:'Uso directo → '+planta+(planta!==oc.dest?' (destino: '+oc.dest+')':'')});
-    if(planta!==oc.dest){
-      ocPendientesEnviar.push({id:nextId(),ocNum:oc.num,items:oc.items,desde:planta,hacia:oc.dest,ts:now(),status:'pendiente',generaStock:false,usoDirecto:true});
+    // Partial: keep OC as pending with only remaining items
+    oc.status='pendiente';
+    oc.items=itemsPendientes;
+    if(!oc.num.includes('(parcial)')) oc.num=oc.num+' (parcial)';
+  }
+
+  if(itemsRecibidos.length>0){
+    if(oc.generaStock!==false){
+      itemsRecibidos.forEach(it=>{
+        if(!inventory[it.ref]) inventory[it.ref]={name:it.name,cat:it.cat||'REP',equipo:it.equipo||'',min:it.min||1,precioARS:0,precioUSD:0,stock:Object.fromEntries(PLANTAS.map(p=>[p,0]))};
+        PLANTAS.forEach(p=>{if(inventory[it.ref].stock[p]===undefined) inventory[it.ref].stock[p]=0;});
+        inventory[it.ref].stock[planta]=(inventory[it.ref].stock[planta]||0)+it.qty;
+        if(it.precioARS) inventory[it.ref].precioARS=it.precioARS;
+        if(it.precioUSD) inventory[it.ref].precioUSD=it.precioUSD;
+      });
+      const tipoEntrada=esTotal?'Entrada':'Entrada parcial';
+      historial.push({ts:now(),tipo:tipoEntrada,planta,ref:'OC '+oc.num,item:'Recepción OC'+(esTotal?'':' (parcial)'),qty:totalRecibido,operador,detalle:(oc.prov||'')+' → '+planta+(totalPendiente>0?' · Falta: '+totalPendiente+' u.':'')});
+      if(planta!==oc.dest){
+        itemsRecibidos.forEach(it=>{inventory[it.ref].stock[planta]-=it.qty;});
+        ocPendientesEnviar.push({id:nextId(),ocNum:oc.num,items:itemsRecibidos,desde:planta,hacia:oc.dest,ts:now(),status:'pendiente',generaStock:true});
+      }
+    } else {
+      historial.push({ts:now(),tipo:'Uso directo',planta,ref:'OC '+oc.num,item:'Recepción OC',qty:totalRecibido,operador,detalle:'Uso directo → '+planta+(totalPendiente>0?' · Falta: '+totalPendiente+' u.':'')});
+      if(planta!==oc.dest){
+        ocPendientesEnviar.push({id:nextId(),ocNum:oc.num,items:itemsRecibidos,desde:planta,hacia:oc.dest,ts:now(),status:'pendiente',generaStock:false,usoDirecto:true});
+      }
     }
   }
 
@@ -1345,7 +1555,7 @@ function confirmarRecepcionTransfer(id){
       </select>
     </div>
     <div style="display:flex;gap:8px;margin-top:1rem">
-      <button onclick="procesarRecepcionTransfer(${id})" style="flex:1;background:var(--text);color:var(--bg);border:none;border-radius:var(--r);padding:12px;font-size:14px;font-weight:500;cursor:pointer">&#10003; Confirmar</button>
+      <button onclick="procesarRecepcionTransfer(${id})" style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:var(--r);padding:12px;font-size:14px;font-weight:600;cursor:pointer">&#10003; Confirmar</button>
       <button onclick="document.getElementById('recep-transfer-modal').remove()" style="flex:1;background:none;border:0.5px solid var(--border2);border-radius:var(--r);padding:12px;font-size:14px;cursor:pointer">Cancelar</button>
     </div>
   </div>`;
