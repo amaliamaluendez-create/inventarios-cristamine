@@ -105,6 +105,9 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
     <div class="card-title">&#128666; En viaje hacia esta planta</div>
     <div id="oc-en-viaje-list"><div class="empty">Sin ítems en camino.</div></div>
   </div>
+  <div style="text-align:right;margin-bottom:6px">
+    <button class="btn-sec" onclick="document.getElementById('card-import-berjerman').style.display='block'" style="font-size:12px;padding:6px 12px">&#128196; Importar OC de Berjerman</button>
+  </div>
   <div class="card">
     <div class="card-title">&#128230; OC pendientes de recibir</div>
     <div id="oc-pendientes-list"><div class="empty">Sin OC pendientes.</div></div>
@@ -112,6 +115,16 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
   <div class="card" id="card-pendientes-enviar">
     <div class="card-title">&#128666; OC pendientes de enviar a destino</div>
     <div id="oc-pendientes-enviar"><div class="empty">Sin envíos pendientes.</div></div>
+  </div>
+  <div class="card" id="card-import-berjerman">
+    <div class="card-title">&#128196; Importar OC desde Berjerman</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:10px">Exportá el listado de OC desde Berjerman y subílo acá para cargarlas todas juntas.</p>
+    <div class="upload-zone" id="import-zone" onclick="document.getElementById('import-file').click()">
+      <i class="ti ti-file-spreadsheet" style="font-size:28px;display:block;margin-bottom:6px"></i>
+      Subir archivo Excel de Berjerman (.xlsx)
+      <input type="file" id="import-file" accept=".xlsx" style="display:none" onchange="importarOCsBerjerman(this)">
+    </div>
+    <div id="import-result" style="display:none;background:var(--bg2);border-radius:var(--r);padding:.875rem;font-size:13px;margin-top:8px"></div>
   </div>
   <div class="card">
     <div class="card-title">Nueva OC</div>
@@ -285,6 +298,163 @@ function setGeneraStock(val){
   document.getElementById('btn-genera-si').style.color=val?'var(--bg)':'var(--text)';
   document.getElementById('btn-genera-no').style.background=!val?'var(--text)':'none';
   document.getElementById('btn-genera-no').style.color=!val?'var(--bg)':'var(--text)';
+}
+
+async function importarOCsBerjerman(input){
+  if(!input.files[0]) return;
+  const file=input.files[0];
+  const resultEl=document.getElementById('import-result');
+  resultEl.style.display='block';
+  resultEl.innerHTML='Leyendo archivo...';
+
+  try{
+    // Read file as ArrayBuffer
+    const buffer=await new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result);
+      r.onerror=rej;
+      r.readAsArrayBuffer(file);
+    });
+
+    // Use SheetJS via CDN
+    if(typeof XLSX==='undefined'){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+        s.onload=res;s.onerror=rej;
+        document.head.appendChild(s);
+      });
+    }
+
+    const workbook=XLSX.read(buffer,{type:'arraybuffer',cellDates:true});
+    const ws=workbook.Sheets[workbook.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:false});
+
+    const ocs=[];
+    let currentOC=null;
+
+    for(let i=0;i<rows.length;i++){
+      const row=rows[i];
+      // OC header: col3==='OC' and col7 is number
+      if(row[3]==='OC' && row[7] && !isNaN(Number(row[7]))){
+        const provCod=String(row[0]||'').padStart(6,'0');
+        const provNombre=proveedores.find(p=>p.cod===provCod)?.nombre||('Prov '+provCod);
+        currentOC={
+          id:nextId(),
+          num:String(row[7]),
+          prov:provNombre,
+          prov_cod:provCod,
+          fecha:row[1]?String(row[1]).substring(0,10):'',
+          dest:document.getElementById('oc-dest').value||'Berazategui',
+          items:[],
+          status:'pendiente',
+          created:now(),
+          generaStock:true
+        };
+        ocs.push(currentOC);
+      }
+      // Item type 1: col0=cod(str), col2=desc(str), col3=qty(num)
+      else if(currentOC && row[0] && typeof row[0]==='string' && row[0]!=='P' && row[2] && typeof row[2]==='string' && row[3] && !isNaN(Number(row[3]))){
+        const moneda=row[6]&&String(row[6]).includes('$s')?'USD':'ARS';
+        currentOC.items.push({
+          ref:'IMP-'+String(row[0]).replace(/[^a-zA-Z0-9]/g,'').substring(0,8),
+          name:String(row[2]).trim(),
+          cat:'REP',equipo:'',
+          qty:Number(row[3]),min:1,
+          precioARS:moneda==='ARS'?Number(row[5]||0):0,
+          precioUSD:moneda==='USD'?Number(row[5]||0):0
+        });
+      }
+      // Item type 2: col2=desc(str), col3=qty(num) (no cod)
+      else if(currentOC && row[2] && typeof row[2]==='string' && row[3] && !isNaN(Number(row[3])) && !row[0]){
+        const moneda=row[6]&&String(row[6]).includes('$s')?'USD':'ARS';
+        currentOC.items.push({
+          ref:'IMP-'+nextId(),
+          name:String(row[2]).trim(),
+          cat:'REP',equipo:'',
+          qty:Number(row[3]),min:1,
+          precioARS:moneda==='ARS'?Number(row[5]||0):0,
+          precioUSD:moneda==='USD'?Number(row[5]||0):0
+        });
+      }
+      // Item type 3: col3='UN', col4=qty
+      else if(currentOC && row[3]==='UN' && row[4] && !isNaN(Number(row[4]))){
+        const moneda=row[7]&&String(row[7]).includes('$s')?'USD':'ARS';
+        currentOC.items.push({
+          ref:'IMP-'+String(row[0]||'').replace(/[^a-zA-Z0-9]/g,'').substring(0,8)||('IMP-'+nextId()),
+          name:String(row[2]||'').trim(),
+          cat:'REP',equipo:'',
+          qty:Number(row[4]),min:1,
+          precioARS:moneda==='ARS'?Number(row[6]||0):0,
+          precioUSD:moneda==='USD'?Number(row[6]||0):0
+        });
+      }
+    }
+
+    // Filter OCs with items only
+    const validas=ocs.filter(o=>o.items.length>0);
+    const totalItems=validas.reduce((a,b)=>a+b.items.length,0);
+
+    if(!validas.length){
+      resultEl.innerHTML='<span style="color:var(--danger-text)">No se encontraron OC válidas en el archivo.</span>';
+      return;
+    }
+
+    // Check for duplicates
+    const duplicadas=[];
+    const nuevas=[];
+    validas.forEach(oc=>{
+      const existe=ocList.find(o=>o.num===oc.num);
+      if(existe) duplicadas.push(oc.num);
+      else nuevas.push(oc);
+    });
+
+    if(duplicadas.length>0 && nuevas.length===0){
+      resultEl.innerHTML=`<span style="color:var(--danger-text)">&#9888; Todas las OC del archivo ya están cargadas en el sistema: ${duplicadas.map(n=>'OC '+n).join(', ')}</span>`;
+      return;
+    }
+
+    // Add only new OCs
+    nuevas.forEach(oc=>ocList.push(oc));
+    renderOCPendientes();
+    renderOCPendientesEnviar();
+    updateMetrics();
+
+    const totalNuevas=nuevas.reduce((a,b)=>a+b.items.length,0);
+    let msg=`<span style="color:var(--ok-text)">&#10003; Se importaron <strong>${nuevas.length} OC</strong> con <strong>${totalNuevas} ítems</strong>.</span>`;
+    if(duplicadas.length>0){
+      msg+=`<br><span style="color:var(--warn-text)">&#9888; ${duplicadas.length} OC ya existían y se omitieron: ${duplicadas.map(n=>'OC '+n).join(', ')}</span>`;
+    }
+    msg+=`<div style="margin-top:6px;font-size:12px">${nuevas.map(o=>`<div>• OC ${o.num} – ${o.prov} (${o.items.length} ítems)</div>`).join('')}</div>`;
+    resultEl.innerHTML=msg;
+    
+    // Ocultar la card de importación después de 4 segundos
+    setTimeout(()=>{
+      const importCard=document.getElementById('card-import-berjerman');
+      if(importCard) importCard.style.display='none';
+    }, 4000);
+
+  }catch(e){
+    resultEl.innerHTML='<span style="color:var(--danger-text)">Error al leer el archivo: '+e.message+'</span>';
+  }
+}
+
+function editOCDest(id,dest){
+  const oc=ocList.find(o=>Number(o.id)===Number(id));
+  if(oc){
+    oc.dest=dest;
+    // Update the dest display label without re-rendering
+    const card=document.querySelector('[data-oc-id="'+id+'"]');
+    if(card){
+      const label=card.querySelector('.oc-dest-label');
+      if(label) label.textContent=dest;
+    }
+  }
+}
+
+function editOCGeneraStock(id,val){
+  const oc=ocList.find(o=>Number(o.id)===Number(id));
+  if(oc) oc.generaStock=val==='true';
 }
 
 function initUI(){
@@ -593,12 +763,27 @@ function renderOCPendientes(){
   const el=document.getElementById('oc-pendientes-list');
   const pend=ocList.filter(o=>o.status==='pendiente'&&(activePlanta==='Todas'||o.dest===activePlanta));
   if(!pend.length){el.innerHTML='<div class="empty">Sin OC pendientes.</div>';return;}
-  el.innerHTML=pend.map(oc=>`<div class="item-card">
-    <div style="margin-bottom:6px">
-      <div style="font-size:13px;font-weight:500">OC ${esc(oc.num)} <span class="badge b-pend">Pendiente</span> ${oc.generaStock===false?'<span class="badge b-gray">Uso directo</span>':'<span class="badge b-ok">Genera stock</span>'}</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(oc.prov||'')} &rarr; ${esc(oc.dest)}${oc.fecha?' &middot; ETA '+oc.fecha:''}</div>
+  el.innerHTML=pend.map(oc=>`<div class="item-card" data-oc-id="${oc.id}">
+    <div style="margin-bottom:8px">
+      <div style="font-size:13px;font-weight:500;margin-bottom:4px">OC ${esc(oc.num)} <span class="badge b-pend">Pendiente</span></div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:6px">${esc(oc.prov||'')}${oc.fecha?' &middot; ETA '+oc.fecha:''}</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:2px">Destino</div>
+          <select onchange="editOCDest(${oc.id},this.value)" style="width:100%;font-size:12px;padding:6px 8px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg)">
+            ${PLANTAS.map(p=>`<option value="${p}" ${p===oc.dest?'selected':''}>${p}</option>`).join('')}
+          </select>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:2px">Tipo</div>
+          <select onchange="editOCGeneraStock(${oc.id},this.value)" style="width:100%;font-size:12px;padding:6px 8px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg)">
+            <option value="true" ${oc.generaStock!==false?'selected':''}>&#10003; Genera stock</option>
+            <option value="false" ${oc.generaStock===false?'selected':''}>&#10007; Uso directo</option>
+          </select>
+        </div>
+      </div>
     </div>
-    <div style="font-size:12px;margin-bottom:8px">${oc.items.map(it=>`<div style="padding:2px 0"><span class="badge b-gray">${esc(it.ref)}</span> ${esc(it.name.substring(0,28))} &times;${it.qty}${it.precioUSD?' &middot; u$s'+fmtUSD(it.precioUSD):''}</div>`).join('')}</div>
+    <div style="font-size:12px;margin-bottom:8px">${oc.items.map(it=>`<div style="padding:2px 0"><span class="badge b-gray">${esc(it.ref)}</span> ${esc(it.name.substring(0,28))} &times;${it.qty}${it.precioUSD?' &middot; u$s'+fmtUSD(it.precioUSD):it.precioARS?' &middot; $'+fmt(it.precioARS):''}</div>`).join('')}</div>
     <button class="btn" onclick="recibirOC(${oc.id})">&#10003; Confirmar recepción</button>
   </div>`).join('');
 }
