@@ -44,7 +44,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 .planta-bar{display:flex;gap:6px;margin-bottom:1rem;overflow-x:auto;padding-bottom:4px}
 .planta-btn{padding:7px 12px;font-size:12px;font-weight:500;border:0.5px solid var(--border2);border-radius:20px;background:none;cursor:pointer;white-space:nowrap;color:var(--text2)}
 .planta-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
-.tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-bottom:1rem}
+.tabs{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:1rem}
 .tab{padding:10px 2px;font-size:10px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:none;color:var(--text2);border-radius:var(--r);text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
 .tab i{font-size:16px}
 .tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
@@ -104,6 +104,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
   <button class="tab" onclick="showTab('salida',this)"><i class="ti ti-arrow-up-circle"></i>Salida</button>
   <button class="tab" onclick="showTab('transfer',this)"><i class="ti ti-arrow-left-right"></i>Transfer</button>
   <button class="tab" onclick="showTab('historial',this)"><i class="ti ti-history"></i>Historial</button>
+  <button class="tab" onclick="showTab('config',this)"><i class="ti ti-settings"></i>Config</button>
 </div>
 <div class="panel active" id="panel-stock">
   <div id="stock-pendientes-aviso"></div>
@@ -130,6 +131,23 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
         <button class="btn" onclick="confirmarCargaManual()" style="font-size:13px;padding:10px">Confirmar carga</button>
         <button class="btn-sec" onclick="toggleCargaManual()" style="font-size:13px;padding:10px">Cancelar</button>
       </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:0.5px solid var(--border)">
+        <div class="card-title">Crear artículo nuevo</div>
+        <div class="field"><label>Código</label><input type="text" id="cm-new-ref" placeholder="Ej: FIL-200"></div>
+        <div class="field"><label>Descripción</label><input type="text" id="cm-new-name" placeholder="Ej: Filtro aceite hidraulico"></div>
+        <div class="row2">
+          <div class="field"><label>Categoría</label>
+            <select id="cm-new-cat" style="font-size:15px;padding:10px 12px">
+              <option>FIL</option><option>ACE</option><option>REP</option><option>BAN</option>
+              <option>ROD</option><option>MOT</option><option>ELE</option><option>NEU</option>
+              <option>SEG</option><option>BOS</option><option>HER</option><option>VAL</option>
+              <option>TUB</option><option>OTRO</option>
+            </select>
+          </div>
+          <div class="field"><label>Stock inicial</label><input type="number" id="cm-new-qty" min="0" value="0" style="font-size:15px;padding:10px 12px"></div>
+        </div>
+        <button class="btn" onclick="crearArticuloNuevo()" style="font-size:13px;padding:10px">+ Crear artículo</button>
+      </div>
       <div class="toast" id="msg-carga" style="margin-top:8px">&#10003; Stock cargado correctamente.</div>
     </div>
   </div>
@@ -141,8 +159,8 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
   <!-- Nuevo pedido -->
   <div class="card">
     <div class="card-title">&#128233; Nuevo pedido</div>
-    <div class="field"><label>Planta que pide</label><select id="ped-planta" style="font-size:15px;padding:10px 12px" onchange="populateOperadores('ped-operador',this.value)"></select></div>
-    <div class="field"><label>Operador</label><select id="ped-operador" style="font-size:15px;padding:10px 12px"><option value="">-- Tu nombre --</option></select></div>
+    <div class="field"><label>Planta que pide</label><select id="ped-planta" style="font-size:15px;padding:10px 12px"></select></div>
+    <div class="field"><label>Quién pide</label><select id="ped-operador" style="font-size:15px;padding:10px 12px"><option value="">-- Tu nombre --</option></select></div>
     <div class="search-box">
       <input type="text" id="ped-search" placeholder="Buscá el artículo..." oninput="searchPedidoItem(this.value)" autocomplete="off">
       <div class="search-results" id="ped-results"></div>
@@ -181,20 +199,26 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
       <button class="btn-sec" onclick="closePinWrap()">Cancelar</button>
     </div>
   </div>
-  <div class="card" id="card-en-viaje" style="display:none">
-    <div class="card-title">&#128666; En viaje hacia esta planta</div>
-    <div id="oc-en-viaje-list"><div class="empty">Sin ítems en camino.</div></div>
+  <!-- Sub-tabs OC -->
+  <div style="display:flex;gap:6px;margin-bottom:1rem">
+    <button id="sub-tab-recibir" onclick="showOCSubTab('recibir')" style="flex:1;padding:10px;font-size:12px;font-weight:600;border-radius:var(--r);border:0.5px solid var(--primary);background:var(--primary);color:#fff;cursor:pointer">&#128230; Pendientes de recibir</button>
+    <button id="sub-tab-enviar" onclick="showOCSubTab('enviar')" style="flex:1;padding:10px;font-size:12px;font-weight:600;border-radius:var(--r);border:0.5px solid var(--primary);background:none;color:var(--primary);cursor:pointer">&#128666; Pendientes de enviar</button>
   </div>
-  <div style="text-align:right;margin-bottom:6px">
-    <button class="btn-sec" onclick="document.getElementById('card-import-berjerman').style.display='block'" style="font-size:12px;padding:6px 12px">&#128196; Importar OC de Berjerman</button>
+  <div id="oc-sub-recibir">
+    <div class="card" id="card-en-viaje" style="display:none">
+      <div id="card-en-viaje-title" class="card-title">&#128666; En viaje / pendiente de envío</div>
+      <div id="oc-en-viaje-list"><div class="empty">Sin ítems en camino.</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">&#128230; OC pendientes de recibir</div>
+      <div id="oc-pendientes-list"><div class="empty">Sin OC pendientes.</div></div>
+    </div>
   </div>
-  <div class="card">
-    <div class="card-title">&#128230; OC pendientes de recibir</div>
-    <div id="oc-pendientes-list"><div class="empty">Sin OC pendientes.</div></div>
-  </div>
-  <div class="card" id="card-pendientes-enviar">
-    <div class="card-title">&#128666; OC pendientes de enviar a destino</div>
-    <div id="oc-pendientes-enviar"><div class="empty">Sin envíos pendientes.</div></div>
+  <div id="oc-sub-enviar" style="display:none">
+    <div class="card" id="card-pendientes-enviar">
+      <div class="card-title">&#128666; OC pendientes de enviar a destino</div>
+      <div id="oc-pendientes-enviar"><div class="empty">Sin envíos pendientes.</div></div>
+    </div>
   </div>
   <div class="card" id="card-import-berjerman">
     <div class="card-title">&#128196; Importar OC desde Berjerman</div>
@@ -208,12 +232,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
   </div>
   <div class="card">
     <div class="card-title">Nueva OC</div>
-    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('oc-img').click()">
-      <i class="ti ti-camera" style="font-size:28px;display:block;margin-bottom:6px"></i>
-      Foto o PDF de la OC
-      <input type="file" id="oc-img" accept="image/*,application/pdf" style="display:none" onchange="processOCImage(this)">
-    </div>
-    <div id="ai-result" style="display:none"><div style="background:var(--bg2);border-radius:var(--r);padding:.75rem;margin-bottom:10px;font-size:13px" id="ai-text"></div></div>
+
     <div class="field"><label>N&#176; OC</label><input type="text" id="oc-num" placeholder="Ej: 00006724"></div>
     <div class="field"><label>Proveedor</label>
       <div class="search-box" style="margin-bottom:0">
@@ -305,6 +324,22 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
   <div class="field" style="margin-bottom:10px"><select id="hist-filter" onchange="renderHistorial()" style="font-size:13px;padding:8px 10px;width:100%;border:0.5px solid var(--border2);border-radius:var(--r)"><option value="">Todas las plantas</option></select></div>
   <div id="hist-list"><div class="empty">Sin movimientos a&#250;n.</div></div>
 </div>
+<div class="panel" id="panel-config">
+  <div class="card">
+    <div class="card-title">&#128101; Operadores por planta</div>
+    <div class="field">
+      <label>Planta</label>
+      <select id="cfg-planta" onchange="renderConfigOperadores()" style="font-size:15px;padding:10px 12px">
+      </select>
+    </div>
+    <div id="cfg-operadores-list" style="margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="cfg-nuevo-op" placeholder="Nombre del operador" style="flex:1;font-size:15px;padding:10px 12px;border:0.5px solid var(--border2);border-radius:var(--r)">
+      <button class="btn" onclick="agregarOperador()" style="width:auto;padding:10px 16px;margin:0">+ Agregar</button>
+    </div>
+  </div>
+</div>
+
 </div>
 <script>
 const catalog=[{"ref":"FIL-TMP-001","name":"Air filter","cat":"FIL","equipo":"TM360.8 EXCAVATOR","stock":8,"min":2},{"ref":"FIL-TMP-002","name":"Oil filter","cat":"FIL","equipo":"TM360.8 EXCAVATOR","stock":19,"min":4},{"ref":"FIL-TMP-003","name":"Fuel filter","cat":"FIL","equipo":"TM360.8 EXCAVATOR","stock":8,"min":2},{"ref":"FIL-TMP-004","name":"Fuel filter","cat":"FIL","equipo":"TM360.8 EXCAVATOR","stock":8,"min":2},{"ref":"FIL-TMP-005","name":"Water-fuel separator filter","cat":"FIL","equipo":"TM360.8 EXCAVATOR","stock":8,"min":2},{"ref":"FIL-TMP-006","name":"Hydraulic inlet filter","cat":"FIL","equipo":"TM360.8 EXCAVATOR","stock":4,"min":1},{"ref":"FIL-TMP-007","name":"Hydraulic return filter","cat":"FIL","equipo":"TM360.8 EXCAVATOR","stock":4,"min":1},{"ref":"FIL-TMP-008","name":"Pilot filter","cat":"FIL","equipo":"TM360.8 EXCAVATOR","stock":4,"min":1},{"ref":"FIL-TMP-009","name":"Inner filter,A/C","cat":"FIL","equipo":"TM360.8 EXCAVATOR","stock":4,"min":1},{"ref":"FIL-TMP-010","name":"Outer filter,A/C","cat":"FIL","equipo":"TM360.8 EXCAVATOR","stock":4,"min":1},{"ref":"FIL-TMP-011","name":"Air filter","cat":"FIL","equipo":"TM520.8 EXCAVATOR","stock":4,"min":1},{"ref":"FIL-TMP-012","name":"Oil filter","cat":"FIL","equipo":"TM520.8 EXCAVATOR","stock":9,"min":2},{"ref":"FIL-TMP-013","name":"Fuel filter","cat":"FIL","equipo":"TM520.8 EXCAVATOR","stock":4,"min":1},{"ref":"FIL-TMP-014","name":"Fuel-water separator filter","cat":"FIL","equipo":"TM520.8 EXCAVATOR","stock":4,"min":1},{"ref":"FIL-TMP-015","name":"Hydraulic suction filter","cat":"FIL","equipo":"TM520.8 EXCAVATOR","stock":2,"min":1},{"ref":"FIL-TMP-016","name":"Hydraulic return filter","cat":"FIL","equipo":"TM520.8 EXCAVATOR","stock":2,"min":1},{"ref":"FIL-TMP-017","name":"Pilot filter","cat":"FIL","equipo":"TM520.8 EXCAVATOR","stock":2,"min":1},{"ref":"FIL-TMP-018","name":"Inner filter A/C","cat":"FIL","equipo":"TM520.8 EXCAVATOR","stock":2,"min":1},{"ref":"FIL-TMP-019","name":"Outer filter A/C","cat":"FIL","equipo":"TM520.8 EXCAVATOR","stock":2,"min":1},{"ref":"FIL-TMP-020","name":"Suction filter,fuel tank","cat":"FIL","equipo":"TM520.8 EXCAVATOR","stock":1,"min":1},{"ref":"FIL-TMP-021","name":"Oil filter","cat":"FIL","equipo":"TM30Y STANDING SKID LOADER","stock":5,"min":1},{"ref":"FIL-TMP-022","name":"Fuel filter","cat":"FIL","equipo":"TM30Y STANDING SKID LOADER","stock":5,"min":1},{"ref":"FIL-TMP-023","name":"Hydraulic oil suction filter","cat":"FIL","equipo":"TM30Y STANDING SKID LOADER","stock":5,"min":1},{"ref":"FIL-TMP-024","name":"Hydraulic oil return filter","cat":"FIL","equipo":"TM30Y STANDING SKID LOADER","stock":5,"min":1},{"ref":"FIL-TMP-025","name":"Air filter","cat":"FIL","equipo":"TM30Y STANDING SKID LOADER","stock":5,"min":1},{"ref":"FIL-TMP-026","name":"Safy filter","cat":"FIL","equipo":"TM30Y STANDING SKID LOADER","stock":5,"min":1},{"ref":"FIL-TMP-027","name":"Air filter","cat":"FIL","equipo":"TM60L SKID LOADER","stock":10,"min":2},{"ref":"FIL-TMP-028","name":"Oil filter","cat":"FIL","equipo":"TM60L SKID LOADER","stock":10,"min":2},{"ref":"FIL-TMP-029","name":"Fuel filter","cat":"FIL","equipo":"TM60L SKID LOADER","stock":10,"min":2},{"ref":"FIL-TMP-030","name":"Fuel filter","cat":"FIL","equipo":"TM60L SKID LOADER","stock":10,"min":2},{"ref":"BAN-TMP-031","name":"Fan belt","cat":"BAN","equipo":"TM60L SKID LOADER","stock":2,"min":1},{"ref":"REP-TMP-032","name":"Engine cylinder liner, piston and so on","cat":"REP","equipo":"TM60L SKID LOADER","stock":1,"min":1},{"ref":"ACE-TMP-033","name":"Output shaft oil seal 65*90*10","cat":"ACE","equipo":"TM60L SKID LOADER","stock":4,"min":1},{"ref":"FIL-TMP-034","name":"Screen filter WU-160*180-J","cat":"FIL","equipo":"TM60L SKID LOADER","stock":4,"min":1},{"ref":"FIL-TMP-035","name":"Large spin-on oil filter element SP10*10","cat":"FIL","equipo":"TM60L SKID LOADER","stock":4,"min":1},{"ref":"FIL-TMP-036","name":"Pilot filter","cat":"FIL","equipo":"TM60L SKID LOADER","stock":4,"min":1},{"ref":"REP-TMP-037","name":"Right dump cylinder repair kit 63/35","cat":"REP","equipo":"TM60L SKID LOADER","stock":1,"min":1},{"ref":"REP-TMP-038","name":"Left dump cylinder repair kit 63/35","cat":"REP","equipo":"TM60L SKID LOADER","stock":1,"min":1},{"ref":"REP-TMP-039","name":"Right boom cylinder repair kit 63/35","cat":"REP","equipo":"TM60L SKID LOADER","stock":1,"min":1},{"ref":"REP-TMP-040","name":"Left boom cylinder repair kit 63/35","cat":"REP","equipo":"TM60L SKID LOADER","stock":1,"min":1},{"ref":"REP-TMP-041","name":"Couplings 25A","cat":"REP","equipo":"TM60L SKID LOADER","stock":1,"min":1},{"ref":"REP-TMP-042","name":"Couplings bolt","cat":"REP","equipo":"TM60L SKID LOADER","stock":10,"min":2},{"ref":"ELE-TMP-043","name":"Start switch","cat":"ELE","equipo":"TM60L SKID LOADER","stock":2,"min":1},{"ref":"NEU-TMP-044","name":"Wheel rim","cat":"NEU","equipo":"TM60L SKID LOADER","stock":2,"min":1},{"ref":"NEU-TMP-045","name":"Tyre","cat":"NEU","equipo":"TM60L SKID LOADER","stock":8,"min":2},{"ref":"REP-TMP-046","name":"Output shaft","cat":"REP","equipo":"TM60L SKID LOADER","stock":2,"min":1},{"ref":"ELE-TMP-047","name":"Three-color light","cat":"ELE","equipo":"TM60L SKID LOADER","stock":4,"min":1},{"ref":"ELE-TMP-048","name":"LED lighting","cat":"ELE","equipo":"TM60L SKID LOADER","stock":4,"min":1},{"ref":"ELE-TMP-049","name":"Main power switch","cat":"ELE","equipo":"TM60L SKID LOADER","stock":2,"min":1},{"ref":"FIL-TMP-050","name":"Air filter","cat":"FIL","equipo":"CPCD35-4WD ROUGH TERRAIN FORKLIFT","stock":8,"min":2},{"ref":"FIL-TMP-051","name":"Oil filter","cat":"FIL","equipo":"CPCD35-4WD ROUGH TERRAIN FORKLIFT","stock":24,"min":6},{"ref":"FIL-TMP-052","name":"Fuel filter","cat":"FIL","equipo":"CPCD35-4WD ROUGH TERRAIN FORKLIFT","stock":24,"min":6},{"ref":"FIL-TMP-053","name":"Air filter","cat":"FIL","equipo":"CPCD25 DIESEL FORKLIFT","stock":16,"min":4},{"ref":"FIL-TMP-054","name":"Oil filter","cat":"FIL","equipo":"CPCD25 DIESEL FORKLIFT","stock":16,"min":4},{"ref":"FIL-TMP-055","name":"Fuel filter","cat":"FIL","equipo":"CPCD25 DIESEL FORKLIFT","stock":16,"min":4},{"ref":"REP-TMP-056","name":"Turbo charger","cat":"REP","equipo":"WHEEL LOADER","stock":3,"min":1},{"ref":"REP-TMP-057","name":"Turbo charger four holes gasket","cat":"REP","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"REP-TMP-058","name":"Turbo charger six holes gasket","cat":"REP","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"ACE-TMP-059","name":"Turbo charger oil inlet gasket","cat":"ACE","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"ACE-TMP-060","name":"Turbo charger oil return gasket","cat":"ACE","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"REP-TMP-061","name":"Injector","cat":"REP","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"FIL-TMP-062","name":"Oil filter","cat":"FIL","equipo":"WHEEL LOADER","stock":30,"min":7},{"ref":"FIL-TMP-063","name":"Fuel filter","cat":"FIL","equipo":"WHEEL LOADER","stock":30,"min":7},{"ref":"FIL-TMP-064","name":"Oil-Water separator filter element","cat":"FIL","equipo":"WHEEL LOADER","stock":30,"min":7},{"ref":"FIL-TMP-065","name":"Air Filter","cat":"FIL","equipo":"WHEEL LOADER","stock":50,"min":12},{"ref":"BAN-TMP-066","name":"Fan Belt","cat":"BAN","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"BAN-TMP-067","name":"Belt Tensioner","cat":"BAN","equipo":"WHEEL LOADER","stock":3,"min":1},{"ref":"ACE-TMP-068","name":"Oil cooler","cat":"ACE","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"ACE-TMP-069","name":"Oil cooler cover gasket","cat":"ACE","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"ACE-TMP-070","name":"Oil pan gasket","cat":"ACE","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"ACE-TMP-071","name":"Oil pump","cat":"ACE","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"ACE-TMP-072","name":"Crankshaft front oil seal","cat":"ACE","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"ROD-TMP-073","name":"Crankshaft bearing (set)","cat":"ROD","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"ACE-TMP-074","name":"High pressure oil pump assembly","cat":"ACE","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"ACE-TMP-075","name":"Injector oil return pipe","cat":"ACE","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"ACE-TMP-076","name":"High pressure oil pump assembly","cat":"ACE","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"FIL-TMP-077","name":"Fuel primary filter assembly","cat":"FIL","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"FIL-TMP-078","name":"Fuel fine filter assembly","cat":"FIL","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"REP-TMP-079","name":"Intake pipe pipe/hose","cat":"REP","equipo":"WHEEL LOADER","stock":3,"min":1},{"ref":"REP-TMP-080","name":"Intake pipe pipe/hose","cat":"REP","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"REP-TMP-081","name":"Turbo charger","cat":"REP","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"REP-TMP-082","name":"Injector","cat":"REP","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"FIL-TMP-083","name":"Fuel fine filter","cat":"FIL","equipo":"WHEEL LOADER","stock":36,"min":9},{"ref":"FIL-TMP-084","name":"Air Filter","cat":"FIL","equipo":"WHEEL LOADER","stock":50,"min":12},{"ref":"BAN-TMP-085","name":"Fan Belt","cat":"BAN","equipo":"WHEEL LOADER","stock":10,"min":2},{"ref":"BAN-TMP-086","name":"Belt Tensioner","cat":"BAN","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"REP-TMP-087","name":"Valve cover gasket","cat":"REP","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"REP-TMP-088","name":"Cylinder matress","cat":"REP","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"FIL-TMP-089","name":"Fuel primary filter assembly","cat":"FIL","equipo":"WHEEL LOADER","stock":10,"min":2},{"ref":"ACE-TMP-090","name":"High pressure oil pump assembly","cat":"ACE","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"ACE-TMP-091","name":"Turbo charger oil return pipe","cat":"ACE","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"ACE-TMP-092","name":"Turbo charger oil inlet pipe","cat":"ACE","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"REP-TMP-093","name":"Water pump assembly","cat":"REP","equipo":"WHEEL LOADER","stock":3,"min":1},{"ref":"REP-TMP-094","name":"Air compressor","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"BAN-TMP-095","name":"Alternator belt","cat":"BAN","equipo":"WHEEL LOADER","stock":5,"min":1},{"ref":"REP-TMP-096","name":"Thermostat","cat":"REP","equipo":"WHEEL LOADER","stock":3,"min":1},{"ref":"REP-TMP-097","name":"Fan bracket","cat":"REP","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"REP-TMP-098","name":"Throttle cable","cat":"REP","equipo":"WHEEL LOADER","stock":3,"min":1},{"ref":"REP-TMP-099","name":"Flame-out solenoid","cat":"REP","equipo":"WHEEL LOADER","stock":3,"min":1},{"ref":"REP-TMP-100","name":"Timing gear housing","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"REP-TMP-101","name":"Rocker arm center pin","cat":"REP","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"REP-TMP-102","name":"Boom upper pin","cat":"REP","equipo":"WHEEL LOADER","stock":10,"min":2},{"ref":"REP-TMP-103","name":"Boom cylinder front pin","cat":"REP","equipo":"WHEEL LOADER","stock":10,"min":2},{"ref":"REP-TMP-104","name":"Boom cylinder rear pin","cat":"REP","equipo":"WHEEL LOADER","stock":10,"min":2},{"ref":"REP-TMP-105","name":"Bucket upper pin","cat":"REP","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"REP-TMP-106","name":"Bucket cylinder pin","cat":"REP","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"REP-TMP-107","name":"Rocker arm end pin","cat":"REP","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"REP-TMP-108","name":"Bucket lower pin","cat":"REP","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"REP-TMP-109","name":"Sub-frame pin","cat":"REP","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"REP-TMP-110","name":"Steering pin","cat":"REP","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"REP-TMP-111","name":"Boom lower sleeve","cat":"REP","equipo":"WHEEL LOADER","stock":10,"min":2},{"ref":"REP-TMP-112","name":"Boom upper sleeve","cat":"REP","equipo":"WHEEL LOADER","stock":10,"min":2},{"ref":"REP-TMP-113","name":"Rocker arm sleeve","cat":"REP","equipo":"WHEEL LOADER","stock":10,"min":2},{"ref":"REP-TMP-114","name":"Sleeve","cat":"REP","equipo":"WHEEL LOADER","stock":10,"min":2},{"ref":"REP-TMP-115","name":"Rocker arm center pin","cat":"REP","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"REP-TMP-116","name":"Boom pin","cat":"REP","equipo":"WHEEL LOADER","stock":16,"min":4},{"ref":"REP-TMP-117","name":"Bucket cylinder rear pin","cat":"REP","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"REP-TMP-118","name":"Boom cylinder front pin","cat":"REP","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"REP-TMP-119","name":"Boom cylinder rear pin","cat":"REP","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"REP-TMP-120","name":"Rocker arm end pin","cat":"REP","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"REP-TMP-121","name":"Bucket upper pin","cat":"REP","equipo":"WHEEL LOADER","stock":10,"min":2},{"ref":"REP-TMP-122","name":"Bucket lower pin","cat":"REP","equipo":"WHEEL LOADER","stock":16,"min":4},{"ref":"REP-TMP-123","name":"Front and rear steering pins - solid","cat":"REP","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"REP-TMP-124","name":"Rocker arm sleeve","cat":"REP","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"REP-TMP-125","name":"Boom cylinder sleeve","cat":"REP","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"REP-TMP-126","name":"Upper hinge pin","cat":"REP","equipo":"WHEEL LOADER","stock":20,"min":5},{"ref":"REP-TMP-127","name":"Lower hinge pin","cat":"REP","equipo":"WHEEL LOADER","stock":20,"min":5},{"ref":"REP-TMP-128","name":"Bucket cylinder rear pin","cat":"REP","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"REP-TMP-129","name":"Bucket cylinder front pin","cat":"REP","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"REP-TMP-130","name":"Boom cylinder front pin","cat":"REP","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"REP-TMP-131","name":"Boom cylinder rear pin","cat":"REP","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"REP-TMP-132","name":"Rocker arm end pin","cat":"REP","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"REP-TMP-133","name":"Steering pin","cat":"REP","equipo":"WHEEL LOADER","stock":10,"min":2},{"ref":"REP-TMP-134","name":"Rocker arm sleeve","cat":"REP","equipo":"WHEEL LOADER","stock":10,"min":2},{"ref":"REP-TMP-135","name":"Boom cylinder sleeve","cat":"REP","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"REP-TMP-136","name":"Upper flange","cat":"REP","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"REP-TMP-137","name":"Down flange","cat":"REP","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"REP-TMP-138","name":"Square hole flange","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"REP-TMP-139","name":"Large pressure plate","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"REP-TMP-140","name":"Large pressure plate","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"ACE-TMP-141","name":"Upper oil seal","cat":"ACE","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"ACE-TMP-142","name":"Down oil seal","cat":"ACE","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"ROD-TMP-143","name":"Down bearing","cat":"ROD","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"ROD-TMP-144","name":"Upper bearing","cat":"ROD","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"REP-TMP-145","name":"Pressure plate bolts, washers","cat":"REP","equipo":"WHEEL LOADER","stock":24,"min":6},{"ref":"REP-TMP-146","name":"Upper pin bolt, washer","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"REP-TMP-147","name":"Lower pin bolt, washer","cat":"REP","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"REP-TMP-148","name":"Square hole pressure plate bolts, washers","cat":"REP","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"REP-TMP-149","name":"Brake pad","cat":"REP","equipo":"WHEEL LOADER","stock":48,"min":12},{"ref":"REP-TMP-150","name":"Brake caliper","cat":"REP","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"REP-TMP-151","name":"Brake caliper repair kit","cat":"REP","equipo":"WHEEL LOADER","stock":30,"min":7},{"ref":"REP-TMP-152","name":"Brake disc","cat":"REP","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"FIL-TMP-153","name":"Oil filter element","cat":"FIL","equipo":"WHEEL LOADER","stock":10,"min":2},{"ref":"FIL-TMP-154","name":"Hydraulic oil filter","cat":"FIL","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"ACE-TMP-155","name":"Main transmission oil seal","cat":"ACE","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"REP-TMP-156","name":"Brake pad","cat":"REP","equipo":"WHEEL LOADER","stock":166,"min":41},{"ref":"REP-TMP-156","name":"Brake caliper","cat":"REP","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"REP-TMP-157","name":"Brake caliper repair kits","cat":"REP","equipo":"WHEEL LOADER","stock":64,"min":16},{"ref":"REP-TMP-158","name":"Brake disc","cat":"REP","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"FIL-TMP-159","name":"Joystick oil filter","cat":"FIL","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"REP-TMP-160","name":"Water pipes","cat":"REP","equipo":"WHEEL LOADER","stock":3,"min":1},{"ref":"ACE-TMP-161","name":"Oil resistant pipe","cat":"ACE","equipo":"WHEEL LOADER","stock":3,"min":1},{"ref":"ACE-TMP-162","name":"Wheel hub oil seal","cat":"ACE","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"NEU-TMP-163","name":"Wheel hub O-ring","cat":"NEU","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"REP-TMP-164","name":"Brake booster","cat":"REP","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"REP-TMP-165","name":"Unloading valve","cat":"REP","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"REP-TMP-166","name":"Air brake assembly","cat":"REP","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"REP-TMP-167","name":"Working pump","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"REP-TMP-168","name":"Steering pump","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"REP-TMP-169","name":"Steering pump","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"REP-TMP-170","name":"Diesel pipe","cat":"REP","equipo":"WHEEL LOADER","stock":3,"min":1},{"ref":"REP-TMP-171","name":"Throttle cable","cat":"REP","equipo":"WHEEL LOADER","stock":3,"min":1},{"ref":"FIL-TMP-172","name":"Hydraulic oil tank inlet filter","cat":"FIL","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"FIL-TMP-173","name":"Hydraulic oil tank outlet filter","cat":"FIL","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"ELE-TMP-174","name":"Low pressure alarm switch","cat":"ELE","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"REP-TMP-175","name":"Large safety valve","cat":"REP","equipo":"WHEEL LOADER","stock":3,"min":1},{"ref":"REP-TMP-176","name":"Small safety valve on overload valve","cat":"REP","equipo":"WHEEL LOADER","stock":4,"min":1},{"ref":"ROD-TMP-177","name":"Bearing 6208","cat":"ROD","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"REP-TMP-178","name":"Turbo assembly","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"NEU-TMP-179","name":"Pump wheel assembly","cat":"NEU","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"NEU-TMP-180","name":"Guide wheel assembly","cat":"NEU","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"REP-TMP-181","name":"Driving gear","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"REP-TMP-182","name":"Turbo shaft","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"NEU-TMP-183","name":"Guide wheel seat","cat":"NEU","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"REP-TMP-184","name":"Repair kits","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"ROD-TMP-185","name":"Bearing 6212","cat":"ROD","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"ROD-TMP-186","name":"Bearing 6310","cat":"ROD","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"ROD-TMP-187","name":"Bearing 6013","cat":"ROD","equipo":"WHEEL LOADER","stock":6,"min":1},{"ref":"REP-TMP-188","name":"Air brake assembly","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"REP-TMP-189","name":"Booster","cat":"REP","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"REP-TMP-190","name":"Safty valve","cat":"REP","equipo":"WHEEL LOADER","stock":1,"min":1},{"ref":"REP-TMP-191","name":"Overload valve","cat":"REP","equipo":"WHEEL LOADER","stock":2,"min":1},{"ref":"REP-TMP-192","name":"Air intake hose","cat":"REP","equipo":"WHEEL LOADER","stock":3,"min":1},{"ref":"REP-TMP-193","name":"Valve cover gasket","cat":"REP","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"REP-TMP-194","name":"Cylinder mattress","cat":"REP","equipo":"WHEEL LOADER","stock":12,"min":3},{"ref":"ACE-TMP-195","name":"Turbo charger oil return pipe","cat":"ACE","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"ACE-TMP-196","name":"Turbo charger oil inlet pipe","cat":"ACE","equipo":"WHEEL LOADER","stock":8,"min":2},{"ref":"REP-TMP-197","name":"Steering gear box golf cart","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"NEU-TMP-198","name":"Nuts for wheels","cat":"NEU","equipo":"GOLF CART","stock":16,"min":4},{"ref":"REP-TMP-199","name":"Center dust cover for new tire,215/35R14 & 23\u00d711-14","cat":"REP","equipo":"GOLF CART","stock":4,"min":1},{"ref":"NEU-TMP-200","name":"Aluminum wheel 14 x 7 for tire 215/35R14","cat":"NEU","equipo":"GOLF CART","stock":4,"min":1},{"ref":"REP-TMP-201","name":"Radial tire 215/35R14, For classic plus","cat":"REP","equipo":"GOLF CART","stock":4,"min":1},{"ref":"REP-TMP-202","name":"Front hub&spindle assembly (Drive side) for mechanical brake","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-203","name":"Front hub&spindle assembly(Passenger side) for mechanical brake","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-204","name":"Mechanical brake assembly driver side","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-205","name":"Mechanical brake assembly passenger side","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-206","name":"Differtical assembly with casing 12:1","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-207","name":"Main contactor 48V solenoid","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-208","name":"Dc converter 48V/12V/200W","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"ELE-TMP-209","name":"LED headlight, driver side","cat":"ELE","equipo":"GOLF CART","stock":1,"min":1},{"ref":"ELE-TMP-210","name":"LED Headlight, passenger side","cat":"ELE","equipo":"GOLF CART","stock":1,"min":1},{"ref":"ELE-TMP-211","name":"Turing light switch assembly","cat":"ELE","equipo":"GOLF CART","stock":1,"min":1},{"ref":"ELE-TMP-212","name":"Direction shifting switch  (D/N/R)","cat":"ELE","equipo":"GOLF CART","stock":1,"min":1},{"ref":"ELE-TMP-213","name":"Knob switch both for wiper and high/low speed mode","cat":"ELE","equipo":"GOLF CART","stock":1,"min":1},{"ref":"ELE-TMP-214","name":"Main switch with key","cat":"ELE","equipo":"GOLF CART","stock":1,"min":1},{"ref":"ELE-TMP-215","name":"New type accelerator pot switch assembly","cat":"ELE","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-216","name":"Electron accelerator","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-217","name":"Battery indicator for lithium battery, round shape","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-218","name":"Main fuse 400A for controller 1236/1268","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-219","name":"Data Transfer Cabl","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-220","name":"9 inch touchscreen","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-221","name":"Antenna for radio","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-222","name":"Back-up camera","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-223","name":"Extension wire harness for back-up camera","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-224","name":"BMS PCB Board with RS485 programming function","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-225","name":"Lithium battery cell balancing device","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-226","name":"Data cable for lithium battery interface software","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-227","name":"Foldable acrylic windshield(clear)","cat":"REP","equipo":"GOLF CART","stock":1,"min":1},{"ref":"REP-TMP-228","name":"Nylon sheet","cat":"REP","equipo":"TELESCOPIC BOOM FORKLIFT","stock":8,"min":2},{"ref":"REP-TMP-229","name":"Lower slider of the first boom head","cat":"REP","equipo":"TELESCOPIC BOOM FORKLIFT","stock":2,"min":1},{"ref":"FIL-TMP-230","name":"Oil filter","cat":"FIL","equipo":"TELESCOPIC BOOM FORKLIFT","stock":5,"min":1},{"ref":"FIL-TMP-231","name":"Fuel filter 1","cat":"FIL","equipo":"TELESCOPIC BOOM FORKLIFT","stock":5,"min":1},{"ref":"FIL-TMP-232","name":"Fuel filter 2","cat":"FIL","equipo":"TELESCOPIC BOOM FORKLIFT","stock":2,"min":1},{"ref":"FIL-TMP-233","name":"Air filter","cat":"FIL","equipo":"TELESCOPIC BOOM FORKLIFT","stock":2,"min":1},{"ref":"ACE-TMP-234","name":"Lifting cylinder oil seal","cat":"ACE","equipo":"TELESCOPIC BOOM FORKLIFT","stock":1,"min":1},{"ref":"ACE-TMP-235","name":"Telescopic cylinder oil seal","cat":"ACE","equipo":"TELESCOPIC BOOM FORKLIFT","stock":1,"min":1},{"ref":"ACE-TMP-236","name":"Tilt cylinder oil seal","cat":"ACE","equipo":"TELESCOPIC BOOM FORKLIFT","stock":1,"min":1},{"ref":"ACE-TMP-237","name":"Leveling cylinder oil seal","cat":"ACE","equipo":"TELESCOPIC BOOM FORKLIFT","stock":1,"min":1},{"ref":"ACE-TMP-238","name":"Latch cylinder oil seal","cat":"ACE","equipo":"TELESCOPIC BOOM FORKLIFT","stock":2,"min":1},{"ref":"REP-TMP-239","name":"Left rear combination lamp","cat":"REP","equipo":"TELESCOPIC BOOM FORKLIFT","stock":1,"min":1},{"ref":"REP-TMP-240","name":"Right rear combination lamp","cat":"REP","equipo":"TELESCOPIC BOOM FORKLIFT","stock":1,"min":1},{"ref":"REP-TMP-241","name":"Snail Trumpet","cat":"REP","equipo":"TELESCOPIC BOOM FORKLIFT","stock":1,"min":1},{"ref":"ELE-TMP-242","name":"Brake pressure sensor","cat":"ELE","equipo":"TELESCOPIC BOOM FORKLIFT","stock":1,"min":1},{"ref":"ELE-TMP-243","name":"Brake pressure sensor","cat":"ELE","equipo":"TELESCOPIC BOOM FORKLIFT","stock":1,"min":1},{"ref":"ELE-TMP-244","name":"Inductive proximity switches \uff08NPN\uff09","cat":"ELE","equipo":"TELESCOPIC BOOM FORKLIFT","stock":2,"min":1},{"ref":"BAN-TMP-245","name":"Belt","cat":"BAN","equipo":"TELESCOPIC BOOM FORKLIFT","stock":1,"min":1},{"ref":"REP-TMP-246","name":"Adjusting screw","cat":"REP","equipo":"TELESCOPIC BOOM FORKLIFT","stock":1,"min":1},{"ref":"REP-TMP-247","name":"Air conditioning compressor adjustment seat","cat":"REP","equipo":"TELESCOPIC BOOM FORKLIFT","stock":1,"min":1},{"ref":"FIL-TMP-248","name":"Oil suction filter","cat":"FIL","equipo":"TELESCOPIC BOOM FORKLIFT","stock":3,"min":1},{"ref":"FIL-TMP-249","name":"Oil return filter","cat":"FIL","equipo":"TELESCOPIC BOOM FORKLIFT","stock":2,"min":1},{"ref":"FIL-TMP-250","name":"Diesel fuel filter","cat":"FIL","equipo":"TELESCOPIC BOOM FORKLIFT","stock":2,"min":1},{"ref":"REP-TMP-251","name":"11Q6-90040 A/C compressor","cat":"REP","equipo":"Others","stock":3,"min":1},{"ref":"REP-TMP-252","name":"Brake caliper piston","cat":"REP","equipo":"Others","stock":16,"min":4},{"ref":"REP-TMP-253","name":"BALTUR BURNER","cat":"REP","equipo":"Others","stock":1,"min":1},{"ref":"FIL-TMP-254","name":"LF14009NN OIL FILTER","cat":"FIL","equipo":"Others","stock":72,"min":18},{"ref":"FIL-TMP-255","name":"LF9028 OIL FILTER","cat":"FIL","equipo":"Others","stock":72,"min":18},{"ref":"FIL-TMP-256","name":"P164378 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-257","name":"P169447 JOYSTICK FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-258","name":"LF596 OIL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-259","name":"AF26267 A/C FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-260","name":"AF26384 A/C FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-261","name":"AF26455 BREATH FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-262","name":"AF26675 BREATH FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-263","name":"FS19907 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-264","name":"LF17533 OIL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-265","name":"AF27819 AIR FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-266","name":"AF25125M\\25126M AIR FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-267","name":"AF25667\\26114 AIR FILTER","cat":"FIL","equipo":"Others","stock":12,"min":3},{"ref":"FIL-TMP-268","name":"AF25437\\25523 AIR FILTER","cat":"FIL","equipo":"Others","stock":60,"min":15},{"ref":"FIL-TMP-269","name":"FF5226 FUEL FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-270","name":"P550220 OIL FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-271","name":"P550309 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-272","name":"LF3654 OIL FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-273","name":"FF5052 FUEL FILTER","cat":"FIL","equipo":"Others","stock":144,"min":36},{"ref":"FIL-TMP-274","name":"P550445 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-275","name":"FF254 FUEL FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-276","name":"P550576 JOYSTICK FILTER","cat":"FIL","equipo":"Others","stock":96,"min":24},{"ref":"FIL-TMP-277","name":"FF5423 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-278","name":"FF5380 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-279","name":"LF3914 OIL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-280","name":"FF5488 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-281","name":"FS19769 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-282","name":"P550787 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-283","name":"FS19732 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-284","name":"FF5632 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-285","name":"FF5421 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-286","name":"FS1000 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-287","name":"LF3970 OIL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-288","name":"FS19914 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-289","name":"FS1071 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-290","name":"FS19816 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-291","name":"FS1280 FUEL FILTER","cat":"FIL","equipo":"Others","stock":96,"min":24},{"ref":"FIL-TMP-292","name":"HF6057 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-293","name":"FS19551 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-294","name":"WF2074 WATER FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-295","name":"WF2075 WATER FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-296","name":"LF3000 OIL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-297","name":"LF3675 OIL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-298","name":"FS1242B FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-299","name":"FS19593 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-300","name":"LF4054 OIL FILTER","cat":"FIL","equipo":"Others","stock":144,"min":36},{"ref":"FIL-TMP-301","name":"HF6005 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-302","name":"LF3349 OIL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-303","name":"LF14000NN OIL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-304","name":"HF28943 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-305","name":"HF35555 JOYSTICK FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-306","name":"AF4201\\4202 AIR FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-307","name":"AF6020 A/C FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-308","name":"P761108 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-309","name":"P763016 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-310","name":"P763018 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-311","name":"HF35498 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-312","name":"AF970 AIR FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-313","name":"AF25454\\25468 AIR FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-314","name":"AF25619\\25620 AIR FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-315","name":"P781466 DRYING FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"REP-TMP-316","name":"AF26490\\26491","cat":"REP","equipo":"Others","stock":18,"min":4},{"ref":"FIL-TMP-317","name":"P783753 DRYING FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-318","name":"P822768\\822769 AIR FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-319","name":"LF17486 OIL FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-320","name":"FS19950 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-321","name":"P959215\\959216 AIR FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-322","name":"AF26664\\AF27843 AIR FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-323","name":"R004212\\004213 AIR FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-324","name":"FF5622 FUEL FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-325","name":"R010051 JOYSTICK FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-326","name":"R010090 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-327","name":"R010109 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-328","name":"AF56028 A/C FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-329","name":"AF56038 A/C FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-330","name":"SC90398 CABIN AIR FILTER","cat":"FIL","equipo":"Others","stock":12,"min":3},{"ref":"FIL-TMP-331","name":"AFM1765/1766 AIR FILTER","cat":"FIL","equipo":"Others","stock":72,"min":18},{"ref":"FIL-TMP-332","name":"C23800\\CF1350 AIR FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-333","name":"AF26431\\26432 AIR FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-334","name":"AF26433\\26434 AIR FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-335","name":"PA5528\\5529 AIR FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-336","name":"20424148 DRYING FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-337","name":"W110001460 FILLING FILTER","cat":"FIL","equipo":"Others","stock":6,"min":1},{"ref":"FIL-TMP-338","name":"W380000010A REFUELING FILTER","cat":"FIL","equipo":"Others","stock":6,"min":1},{"ref":"FIL-TMP-339","name":"AF27917 BREATH FILTER","cat":"FIL","equipo":"Others","stock":18,"min":4},{"ref":"FIL-TMP-340","name":"32QA-00140 BREATH FILTER","cat":"FIL","equipo":"Others","stock":6,"min":1},{"ref":"FIL-TMP-341","name":"2240905 BREATH FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-342","name":"FS36230 FUEL FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-343","name":"FS20123 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-344","name":"FS20124 FUEL FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-345","name":"2731875 ROTER FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-346","name":"2608523 A/C FILTER","cat":"FIL","equipo":"Others","stock":48,"min":12},{"ref":"FIL-TMP-347","name":"5220793 A/C FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-348","name":"5228468 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":24,"min":6},{"ref":"FIL-TMP-349","name":"17410282 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":12,"min":3},{"ref":"FIL-TMP-350","name":"E131-0214 HYDRAULIC FILTER","cat":"FIL","equipo":"Others","stock":12,"min":3},{"ref":"FIL-TMP-351","name":"203000026 Hydraulic oil tank inlet filter","cat":"FIL","equipo":"Others","stock":1,"min":1},{"ref":"FIL-TMP-352","name":"203000027 Hydraulic oil tank inlet filter","cat":"FIL","equipo":"Others","stock":1,"min":1},{"ref":"FIL-TMP-353","name":"201000026 hydraulic filter","cat":"FIL","equipo":"Others","stock":1,"min":1},{"ref":"FIL-TMP-354","name":"201000027 hydraulic filter","cat":"FIL","equipo":"Others","stock":1,"min":1},{"ref":"FIL-TMP-355","name":"750131053 GEARBOX FILTER","cat":"FIL","equipo":"Others","stock":6,"min":1},{"ref":"FIL-TMP-356","name":"3215020000A HYDRAULIC INLET FILTER","cat":"FIL","equipo":"Others","stock":2,"min":1},{"ref":"FIL-TMP-357","name":"07063-71383 HYDRAULIC RETURN FILTER","cat":"FIL","equipo":"Others","stock":2,"min":1},{"ref":"FIL-TMP-358","name":"LH0060D010BN/HC PILOT FILTER","cat":"FIL","equipo":"Others","stock":2,"min":1},{"ref":"FIL-TMP-359","name":"22-70-000062 INNER FILTER A/C","cat":"FIL","equipo":"Others","stock":2,"min":1},{"ref":"FIL-TMP-360","name":"22-70-000061 OUTER FILTER,A/C","cat":"FIL","equipo":"Others","stock":2,"min":1},{"ref":"MOT-TMP-361","name":"A40E truck hydraulic motor","cat":"MOT","equipo":"Others","stock":1,"min":1}];
@@ -562,12 +597,8 @@ function editOCDest(id,dest){
   const oc=ocList.find(o=>Number(o.id)===Number(id));
   if(oc){
     oc.dest=dest;
-    // Update the dest display label without re-rendering
-    const card=document.querySelector('[data-oc-id="'+id+'"]');
-    if(card){
-      const label=card.querySelector('.oc-dest-label');
-      if(label) label.textContent=dest;
-    }
+    renderOCPendientes();
+    renderOCPendientesEnviar();
   }
 }
 
@@ -633,6 +664,33 @@ function selectCMNewItem(nombre){
   document.getElementById('cm-selected').style.display='block';
   document.getElementById('cm-item-name').textContent=nombre;
   document.getElementById('cm-item-ref').textContent=ref+' (nuevo)';
+}
+
+function crearArticuloNuevo(){
+  const ref=document.getElementById('cm-new-ref')?.value.trim();
+  const name=document.getElementById('cm-new-name')?.value.trim();
+  const cat=document.getElementById('cm-new-cat')?.value||'OTRO';
+  const qty=parseInt(document.getElementById('cm-new-qty')?.value)||0;
+  const planta=document.getElementById('cm-planta')?.value||PLANTAS[0];
+  if(!ref){alert('Ingresá el código del artículo.');return;}
+  if(!name){alert('Ingresá la descripción del artículo.');return;}
+  if(catalog.find(c=>c.ref===ref)){alert('Ya existe un artículo con ese código.');return;}
+  // Add to catalog
+  catalog.push({ref,name,cat,equipo:''});
+  // Add to inventory
+  inventory[ref]={name,cat,equipo:'',min:1,precioARS:0,precioUSD:0,stock:Object.fromEntries(PLANTAS.map(p=>[p,0]))};
+  inventory[ref].stock[planta]=qty;
+  // Log
+  if(qty>0) historial.push({ts:now(),tipo:'Carga manual',planta,ref,item:name,qty,operador:'',detalle:'Artículo nuevo creado'});
+  // Reset fields
+  document.getElementById('cm-new-ref').value='';
+  document.getElementById('cm-new-name').value='';
+  document.getElementById('cm-new-qty').value=0;
+  updateMetrics();
+  filterStock(document.getElementById('stock-search')?.value||'');
+  buildSalCatFilter();
+  const toast=document.getElementById('msg-carga');
+  if(toast){toast.style.display='block';toast.textContent='✓ Artículo creado correctamente.';setTimeout(()=>toast.style.display='none',3000);}
 }
 
 function confirmarCargaManual(){
@@ -914,23 +972,83 @@ function cerrarPedido(id){
   updateMetrics();
 }
 
+function renderConfigOperadores(){
+  const planta=document.getElementById('cfg-planta')?.value;
+  const el=document.getElementById('cfg-operadores-list');
+  if(!el||!planta) return;
+  const ops=OPERADORES[planta]||[];
+  if(!ops.length){el.innerHTML='<div style="font-size:13px;color:var(--text2);padding:6px 0">Sin operadores en esta planta.</div>';return;}
+  el.innerHTML=ops.map((op,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--border)">
+    <span style="font-size:14px">${esc(op)}</span>
+    <button onclick="eliminarOperador('${planta}',${i})" style="background:none;border:none;cursor:pointer;color:var(--danger-text);font-size:18px;padding:2px 6px">&times;</button>
+  </div>`).join('');
+}
+
+function agregarOperador(){
+  const planta=document.getElementById('cfg-planta')?.value;
+  const nombre=document.getElementById('cfg-nuevo-op')?.value.trim();
+  if(!planta||!nombre){alert('Completa el nombre.');return;}
+  if(!OPERADORES[planta]) OPERADORES[planta]=[];
+  if(OPERADORES[planta].includes(nombre)){alert('Ese operador ya existe en esta planta.');return;}
+  OPERADORES[planta].push(nombre);
+  document.getElementById('cfg-nuevo-op').value='';
+  renderConfigOperadores();
+  // Update pedido selector
+  const pedSel=document.getElementById('ped-operador');
+  if(pedSel){
+    const todosOps=[...new Set(Object.values(OPERADORES).flat())].sort();
+    pedSel.innerHTML='<option value="">-- Tu nombre --</option>'+todosOps.map(o=>`<option value="${o}">${o}</option>`).join('');
+  }
+}
+
+function eliminarOperador(planta,idx){
+  if(!OPERADORES[planta]) return;
+  const nombre=OPERADORES[planta][idx];
+  if(!confirm('\u00bfEliminar a '+nombre+' de '+planta+'?')) return;
+  OPERADORES[planta].splice(idx,1);
+  renderConfigOperadores();
+}
+
+function showOCSubTab(tab){
+  const recibir=document.getElementById('oc-sub-recibir');
+  const enviar=document.getElementById('oc-sub-enviar');
+  const btnR=document.getElementById('sub-tab-recibir');
+  const btnE=document.getElementById('sub-tab-enviar');
+  if(tab==='recibir'){
+    recibir.style.display='block';
+    enviar.style.display='none';
+    btnR.style.background='var(--primary)';btnR.style.color='#fff';
+    btnE.style.background='none';btnE.style.color='var(--primary)';
+  } else {
+    recibir.style.display='none';
+    enviar.style.display='block';
+    btnE.style.background='var(--primary)';btnE.style.color='#fff';
+    btnR.style.background='none';btnR.style.color='var(--primary)';
+  }
+}
+
 function initUI(){
   const bar=document.getElementById('planta-bar');
   bar.innerHTML=['Todas',...PLANTAS].map(p=>`<button class="planta-btn ${p==='Todas'?'active':''}" onclick="selectPlanta(this)">${p}</button>`).join('');
-  ['oc-dest','sal-origen','tr-desde','tr-hacia','ped-planta'].forEach(id=>{
+  ['oc-dest','sal-origen','tr-desde','tr-hacia','ped-planta','cfg-planta'].forEach(id=>{
     const sel=document.getElementById(id);
     if(sel) sel.innerHTML=PLANTAS.map(p=>`<option>${p}</option>`).join('');
   });
   // Populate operators for default plant
   populateOperadores('sal-quien', PLANTAS[0]);
   populateOperadores('tr-quien', PLANTAS[0]);
-  populateOperadores('ped-operador', PLANTAS[0]);
+  // Pedidos: show ALL operators from all plants
+  const pedSel=document.getElementById('ped-operador');
+  if(pedSel){
+    const todosOps=[...new Set(Object.values(OPERADORES).flat())].sort();
+    pedSel.innerHTML='<option value="">-- Tu nombre --</option>'+todosOps.map(o=>`<option value="${o}">${o}</option>`).join('');
+  }
   const hf=document.getElementById('hist-filter');
   if(hf) hf.innerHTML='<option value="">Todas las plantas</option>'+PLANTAS.map(p=>`<option>${p}</option>`).join('');
 }
 
 function selectPlanta(el){
-  activePlanta=el.textContent;
+  activePlanta=el.textContent.trim();
   document.querySelectorAll('.planta-btn').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
   updateMetrics();
@@ -939,7 +1057,9 @@ function selectPlanta(el){
   renderOCPendientes();
   renderOCPendientesEnviar();
   renderEnViaje();
-  renderEnViaje();
+  renderTransfersPendientes();
+  renderSalidaList();
+  renderTransferList();
 }
 
 function getStock(it,planta){
@@ -971,56 +1091,112 @@ function getEstado(s,min){
   return '<span class="badge b-ok">OK</span>';
 }
 
+const CAT_COLORS={'FIL':'#1a5fa8','ACE':'#8B6914','REP':'#6b3a8a','BAN':'#2d7a3a','ROD':'#c0580a','MOT':'#c01a1a','ELE':'#1a7a7a','NEU':'#555','SEG':'#c07a00','BOS':'#3a6b8a','HER':'#6b5a3a','VAL':'#2d5a7a','TUB':'#5a6b3a','OTRO':'#666'};
+const CAT_NAMES={'FIL':'Filtros','ACE':'Aceites y lubricantes','REP':'Repuestos','BAN':'Bandas y correas','ROD':'Rodamientos','MOT':'Motores','ELE':'Eléctrico','NEU':'Neumáticos','SEG':'Seguridad','BOS':'Bolsas / Big Bags','HER':'Herramientas','VAL':'Válvulas','TUB':'Tubería','RED':'Reductores','OTRO':'Otros'};
+
 function renderStockList(entries){
   const el=document.getElementById('stock-list');
   if(!entries.length){el.innerHTML='<div class="empty">Sin ítems para esta planta.</div>';return;}
-  el.innerHTML=entries.map(([k,it])=>{
-    const s=getStock(it,activePlanta);
-    const pstocks=activePlanta==='Todas'
-      ?`<div class="sp-wrap">${PLANTAS.filter(p=>it.stock[p]>0).map(p=>`<span class="sp-item">${p.split(' ')[0]}: <strong>${it.stock[p]}</strong></span>`).join('')}</div>`
-      :'';
-    return `<div class="item-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div style="flex:1;min-width:0;margin-right:8px"><span class="item-ref">${esc(k)}</span><div class="item-name">${esc(it.name)}</div></div>
-        ${getEstado(s,it.min)}
+  const groups={};
+  entries.forEach(([k,it])=>{
+    const cat=it.cat||'OTRO';
+    if(!groups[cat]) groups[cat]=[];
+    groups[cat].push([k,it]);
+  });
+  const sortedCats=Object.keys(groups).sort();
+  const header=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <span style="font-size:11px;color:var(--text2)">${entries.length} artículo(s)</span>
+    <button onclick="toggleTodasCats()" id="btn-todas-cats" style="font-size:11px;padding:4px 10px;border-radius:20px;border:0.5px solid var(--primary);background:none;color:var(--primary);cursor:pointer">+ Todas</button>
+  </div>`;
+  const accordion=sortedCats.map(cat=>{
+    const color=CAT_COLORS[cat]||'#555';
+    const label=CAT_NAMES[cat]||cat;
+    const items=groups[cat].sort(([,a],[,b])=>a.name.localeCompare(b.name));
+    const sinStock=items.filter(([,it])=>getStock(it,activePlanta)===0).length;
+    const bajoMin=items.filter(([,it])=>{const s=getStock(it,activePlanta);return s>0&&s<=it.min;}).length;
+    const alertaBadge=sinStock>0
+      ?`<span style="background:rgba(255,255,255,0.25);font-size:10px;padding:1px 6px;border-radius:10px;margin-left:6px">${sinStock} sin stock</span>`
+      :bajoMin>0?`<span style="background:rgba(255,255,255,0.25);font-size:10px;padding:1px 6px;border-radius:10px;margin-left:6px">${bajoMin} bajo mín</span>`:'';
+    const itemsHTML=items.map(([k,it])=>{
+      const s=getStock(it,activePlanta);
+      const pstocks=activePlanta==='Todas'
+        ?`<div class="sp-wrap" style="margin-top:2px">${PLANTAS.filter(p=>it.stock[p]>0).map(p=>`<span class="sp-item">${p.split(' ')[0]}: <strong>${it.stock[p]}</strong></span>`).join('')}</div>`:'';
+      const stColor=s===0?'var(--danger-text)':s<=it.min?'var(--warn-text)':'var(--text)';
+      return `<div style="display:flex;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--border)">
+        <div style="flex:1;min-width:0;margin-right:8px">
+          <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.name)}</div>
+          <div style="font-size:10px;color:var(--text2)">${esc(k)}${it.equipo?' &middot; '+esc(it.equipo):''}</div>
+          ${pstocks}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:16px;font-weight:700;color:${stColor}">${s}</div>
+          <div style="font-size:9px;color:var(--text2)">mín:${it.min}</div>
+          ${s===0?`<div style="font-size:9px;color:var(--danger-text);font-weight:600">SIN STOCK</div>`:s<=it.min?`<div style="font-size:9px;color:var(--warn-text);font-weight:600">BAJO</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:6px">
+      <div onclick="toggleCat('${cat}')" style="background:${color};color:#fff;padding:10px 12px;border-radius:var(--r);display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+        <div style="display:flex;align-items:center">
+          <span style="font-size:13px;font-weight:700">${cat}</span>
+          <span style="font-size:12px;opacity:.85;margin-left:6px">${label}</span>
+          ${alertaBadge}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;opacity:.75">${items.length}</span>
+          <span id="arrow-${cat}" style="font-size:12px">&#9660;</span>
+        </div>
       </div>
-      <div class="item-meta">
-        <span class="badge b-gray">${esc(it.cat)}</span>
-        ${it.equipo?`<span style="font-size:9px;color:var(--text3)">${esc(it.equipo)}</span>`:''}
-        Stock: <strong>${s}</strong> &middot; Mín: ${it.min}
-        ${it.precioUSD?'&middot; u$s '+fmtUSD(it.precioUSD):''}
+      <div id="body-${cat}" style="display:none;background:var(--bg);border:0.5px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);padding:0 10px">
+        ${itemsHTML}
       </div>
-      ${pstocks}
     </div>`;
   }).join('');
+  el.innerHTML=header+accordion;
 }
 
-function renderStockPendientesAviso(){
-  const el=document.getElementById('stock-pendientes-aviso');
-  if(!el) return;
-  if(activePlanta==='Todas'){el.innerHTML='';return;}
-  const pend=transfersPendientes.filter(t=>t.status==='pendiente'&&t.hacia===activePlanta);
-  if(!pend.length){el.innerHTML='';return;}
-  el.innerHTML=`
-    <div style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">&#128666; En viaje hacia ${activePlanta}</div>
-    ${pend.map(tp=>`<div class="item-card" style="border-color:var(--warn-text);background:var(--warn-bg)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div style="flex:1;min-width:0;margin-right:8px">
-          <span class="item-ref">${esc(tp.ref)}</span>
-          <div class="item-name">${esc(tp.name)}</div>
-        </div>
-        <span class="badge b-pend">En viaje</span>
+let _allOpen=false;
+function toggleTodasCats(){
+  _allOpen=!_allOpen;
+  document.querySelectorAll('[id^="body-"]').forEach(el=>el.style.display=_allOpen?'block':'none');
+  document.querySelectorAll('[id^="arrow-"]').forEach(el=>el.style.transform=_allOpen?'rotate(180deg)':'');
+  const btn=document.getElementById('btn-todas-cats');
+  if(btn) btn.textContent=_allOpen?'- Cerrar todas':'+ Todas';
+}
+
+function toggleCat(cat){
+  const body=document.getElementById('body-'+cat);
+  const arrow=document.getElementById('arrow-'+cat);
+  if(!body) return;
+  const open=body.style.display==='block';
+  body.style.display=open?'none':'block';
+  if(arrow) arrow.style.transform=open?'':'rotate(180deg)';
+}
+
+
+function renderStockListFlat(entries){
+  const el=document.getElementById('stock-list');
+  if(!entries.length){el.innerHTML='<div class="empty">Sin resultados para esa búsqueda.</div>';return;}
+  el.innerHTML=`<div style="font-size:11px;color:var(--text2);margin-bottom:8px">${entries.length} resultado(s)</div>`+
+  entries.map(([k,it])=>{
+    const s=getStock(it,activePlanta);
+    const pstocks=activePlanta==='Todas'
+      ?`<div class="sp-wrap" style="margin-top:2px">${PLANTAS.filter(p=>it.stock[p]>0).map(p=>`<span class="sp-item">${p.split(' ')[0]}: <strong>${it.stock[p]}</strong></span>`).join('')}</div>`:'';
+    const stColor=s===0?'var(--danger-text)':s<=it.min?'var(--warn-text)':'var(--text)';
+    const color=CAT_COLORS[it.cat]||'#555';
+    return `<div style="display:flex;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--border)">
+      <div style="flex:1;min-width:0;margin-right:8px">
+        <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.name)}</div>
+        <div style="font-size:10px;color:var(--text2)">${esc(k)} &middot; <span style="color:${color};font-weight:600">${it.cat}</span>${it.equipo?' &middot; '+esc(it.equipo):''}</div>
+        ${pstocks}
       </div>
-      <div class="item-meta" style="margin-bottom:8px">
-        ${tp.usoDirecto?'<span class="badge b-gray">Uso directo</span>':'<span class="badge b-ok">Genera stock</span>'}
-        Desde: <strong>${esc(tp.desde)}</strong> &middot; &times;${tp.qty}
-        ${tp.origen?'&middot; '+esc(tp.origen):''}
-        &middot; ${tp.ts}
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:16px;font-weight:700;color:${stColor}">${s}</div>
+        <div style="font-size:9px;color:var(--text2)">mín:${it.min}</div>
+        ${s===0?`<div style="font-size:9px;color:var(--danger-text);font-weight:600">SIN STOCK</div>`:s<=it.min?`<div style="font-size:9px;color:var(--warn-text);font-weight:600">BAJO</div>`:''}
       </div>
-      <button class="btn" onclick="confirmarRecepcionTransfer(${tp.id})" style="font-size:12px;padding:9px">&#10003; Lo recibí</button>
-    </div>`).join('')}
-    <div style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;margin-top:4px">&#128230; Stock en ${activePlanta}</div>
-  `;
+    </div>`;
+  }).join('');
 }
 
 function filterStock(q){
@@ -1029,9 +1205,19 @@ function filterStock(q){
   if(activePlanta!=='Todas'){
     e=e.filter(([k,it])=>(it.stock[activePlanta]||0)>0);
   }
-  if(q){const lq=q.toLowerCase();e=e.filter(([k,it])=>k.toLowerCase().includes(lq)||it.name.toLowerCase().includes(lq)||(it.equipo&&it.equipo.toLowerCase().includes(lq)));}
+  if(q){
+    const lq=q.toLowerCase();
+    e=e.filter(([k,it])=>
+      k.toLowerCase().includes(lq)||
+      it.name.toLowerCase().includes(lq)||
+      (it.cat&&it.cat.toLowerCase().includes(lq))||
+      (it.equipo&&it.equipo.toLowerCase().includes(lq))
+    );
+  }
   e.sort(([,a],[,b])=>getStock(b,activePlanta)-getStock(a,activePlanta));
-  renderStockList(e);
+  // If searching, show flat list; if not, show grouped accordion
+  if(q) renderStockListFlat(e);
+  else renderStockList(e);
 }
 
 function showTab(id,el){
@@ -1041,8 +1227,9 @@ function showTab(id,el){
   el.classList.add('active');
   if(id==='transfer'){renderTransferList();renderTransfersPendientes();}
   if(id==='salida') renderSalidaList();
-  if(id==='oc'){renderOCPendientes();renderOCPendientesEnviar();renderEnViaje();}
+  if(id==='oc'){renderOCPendientes();renderOCPendientesEnviar();renderEnViaje();renderTransfersPendientes();}
   if(id==='pedidos'){renderPedidosPendientes();}
+  if(id==='config'){renderConfigOperadores();}
 }
 
 function solicitarPin(cb){pinCallback=cb;document.getElementById('pin-input').value='';document.getElementById('pin-err').style.display='none';document.getElementById('pin-wrap').style.display='flex';setTimeout(()=>document.getElementById('pin-input').focus(),100);}
@@ -1130,10 +1317,24 @@ function renderEnViaje(){
   const card=document.getElementById('card-en-viaje');
   if(!el||!card) return;
   if(activePlanta==='Todas'){card.style.display='none';return;}
-  const pend=transfersPendientes.filter(t=>t.status==='pendiente'&&t.hacia===activePlanta);
-  if(!pend.length){card.style.display='none';return;}
+  // Items already dispatched (in transit)
+  const enTransito=transfersPendientes.filter(t=>t.status==='pendiente'&&t.hacia===activePlanta);
+  // OCs received at another plant but not yet dispatched - destino is this plant
+  const pendDespacho=ocPendientesEnviar.filter(o=>o.status==='pendiente'&&o.hacia===activePlanta);
+  if(!enTransito.length&&!pendDespacho.length){card.style.display='none';return;}
   card.style.display='block';
-  el.innerHTML=pend.map(tp=>`<div class="item-card" style="border-color:var(--warn-text)">
+  // Show pending dispatch items
+  const despachoHTML=pendDespacho.map(oc=>`<div class="item-card" style="border-color:var(--warn-text);opacity:0.8">
+    <div style="margin-bottom:4px">
+      <span class="badge b-pend">&#128230; Arribó a CM — pendiente de envío</span>
+      <span style="font-size:11px;color:var(--text2);margin-left:6px">OC ${esc(oc.ocNum)}</span>
+    </div>
+    <div style="font-size:13px;font-weight:500;margin-bottom:2px">${oc.items.map(it=>esc(it.name)).join(', ')}</div>
+    <div style="font-size:11px;color:var(--warn-text);font-weight:500">Recibido en ${esc(oc.desde)} — esperando despacho a ${esc(oc.hacia)}</div>
+  </div>`).join('');
+  const pend=enTransito;
+  if(!pend.length&&!despachoHTML){card.style.display='none';return;}
+  el.innerHTML=despachoHTML+pend.map(tp=>`<div class="item-card" style="border-color:var(--warn-text)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
       <div style="flex:1;min-width:0;margin-right:8px">
         <span class="item-ref">${esc(tp.ref)}</span>
@@ -1223,7 +1424,7 @@ function despacharOC(id){
 
 function renderOCPendientes(){
   const el=document.getElementById('oc-pendientes-list');
-  const pend=ocList.filter(o=>o.status==='pendiente'&&(activePlanta==='Todas'||o.dest===activePlanta));
+  const pend=ocList.filter(o=>(o.status==='pendiente'||o.status==='parcial')&&(activePlanta==='Todas'||o.dest.trim()===activePlanta.trim()));
   if(!pend.length){el.innerHTML='<div class="empty">Sin OC pendientes.</div>';return;}
   el.innerHTML=pend.map(oc=>`<div class="item-card" data-oc-id="${oc.id}">
     <div style="margin-bottom:8px">
@@ -1248,13 +1449,16 @@ function renderOCPendientes(){
       </div>
     </div>
     <div style="font-size:12px;margin-bottom:8px">${oc.items.map(it=>`<div style="padding:2px 0"><span class="badge b-gray">${esc(it.ref)}</span> ${esc(it.name.substring(0,28))} &times;${it.qty}${it.precioUSD?' &middot; u$s'+fmtUSD(it.precioUSD):it.precioARS?' &middot; $'+fmt(it.precioARS):''}</div>`).join('')}</div>
-    <button class="btn" onclick="recibirOC(${oc.id})">&#10003; Confirmar recepción</button>
+    <button class="btn" onclick="this.disabled=true;this.textContent='Abriendo...';recibirOC(${oc.id})">&#10003; Confirmar recepción</button>
   </div>`).join('');
 }
 
+const _procesandoOC=new Set();
 function recibirOC(id){
+  if(_procesandoOC.has(Number(id))) return;
+  _procesandoOC.add(Number(id));
   const oc=ocList.find(o=>Number(o.id)===Number(id));
-  if(!oc) return;
+  if(!oc){_procesandoOC.delete(Number(id));return;}
 
   // Mostrar modal de recepción inline
   const modal=document.createElement('div');
@@ -1293,7 +1497,7 @@ function recibirOC(id){
     </div>
     <div style="display:flex;gap:8px;margin-top:1rem">
       <button onclick="confirmarRecepcionModal(${id})" style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:var(--r);padding:12px;font-size:14px;font-weight:600;cursor:pointer">&#10003; Confirmar</button>
-      <button onclick="document.getElementById('recepcion-modal').remove()" style="flex:1;background:none;border:0.5px solid var(--border2);border-radius:var(--r);padding:12px;font-size:14px;cursor:pointer">Cancelar</button>
+      <button onclick="document.getElementById('recepcion-modal').remove();_procesandoOC.clear()" style="flex:1;background:none;border:0.5px solid var(--border2);border-radius:var(--r);padding:12px;font-size:14px;cursor:pointer">Cancelar</button>
     </div>
   </div>`;
   
@@ -1311,6 +1515,7 @@ function updateModalOps(){
 }
 
 function confirmarRecepcionModal(id){
+  _procesandoOC.clear();
   const planta=document.getElementById('modal-planta')?.value;
   const operador=document.getElementById('modal-operador')?.value||'';
   if(!planta){alert('Seleccioná la planta.');return;}
@@ -1318,7 +1523,7 @@ function confirmarRecepcionModal(id){
   const oc=ocList.find(o=>Number(o.id)===Number(id));
   if(!oc) return;
 
-  // Read actual received quantities per item
+  // Read quantities BEFORE removing modal
   const itemsRecibidos=[];
   const itemsPendientes=[];
   oc.items.forEach((it,i)=>{
@@ -1334,6 +1539,10 @@ function confirmarRecepcionModal(id){
 
   const totalRecibido=itemsRecibidos.reduce((a,b)=>a+b.qty,0);
   const totalPendiente=itemsPendientes.reduce((a,b)=>a+b.qty,0);
+  // Now remove modal
+  const _modalEl=document.getElementById('recepcion-modal');
+  if(_modalEl) _modalEl.remove();
+
   const esTotal=itemsPendientes.length===0;
 
   // Mark OC status
