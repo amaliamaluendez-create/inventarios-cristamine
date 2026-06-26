@@ -455,7 +455,7 @@ async function importarOCsBerjerman(input){
 
     const workbook=XLSX.read(buffer,{type:'arraybuffer',cellDates:true});
     const ws=workbook.Sheets[workbook.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:false});
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
 
     const ocs=[];
     let currentOC=null;
@@ -582,11 +582,12 @@ async function importarOCsBerjerman(input){
       resultEl.innerHTML=msg;
     }
     
-    // Ocultar la card de importación después de 4 segundos
-    setTimeout(()=>{
-      const importCard=document.getElementById('card-import-berjerman');
-      if(importCard) importCard.style.display='none';
-    }, 4000);
+    // Reset upload zone para poder subir otro archivo
+    const iz=document.getElementById('import-zone');
+    if(iz){
+      iz.innerHTML='<i class="ti ti-file-spreadsheet" style="font-size:24px;display:block;margin-bottom:4px"></i><span style="font-size:13px">Subir otro archivo Excel</span><input type="file" id="import-file" accept=".xlsx" style="display:none" onchange="importarOCsBerjerman(this)">';
+      iz.onclick=()=>document.getElementById('import-file').click();
+    }
 
   }catch(e){
     resultEl.innerHTML='<span style="color:var(--danger-text)">Error al leer el archivo: '+e.message+'</span>';
