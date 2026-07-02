@@ -1187,7 +1187,8 @@ async function saveInventarioItem(ref){
 async function saveOC(oc){
   if(!syncEnabled||!supabase_client) return;
   try{
-    const {data}=await supabase_client.from('oc').upsert({num:oc.num,prov:oc.prov,prov_cod:oc.prov_cod||'',fecha:oc.fecha||'',dest:oc.dest,items:oc.items,status:oc.status,genera_stock:oc.generaStock!==false},{onConflict:'num',ignoreDuplicates:false});
+    const {data,error}=await supabase_client.from('oc').upsert({num:oc.num,prov:oc.prov,prov_cod:oc.prov_cod||'',fecha:oc.fecha||'',dest:oc.dest,items:oc.items,status:oc.status,genera_stock:oc.generaStock!==false},{onConflict:'num'}).select();
+    if(error) console.error('saveOC error:',error);
     if(data&&data[0]) oc.id=data[0].id;
   }catch(e){console.error('Error guardando OC:',e);}
 }
