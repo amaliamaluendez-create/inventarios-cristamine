@@ -1,9 +1,8 @@
-const CACHE_NAME = 'inventario-cristamine-v1';
+const CACHE_NAME = 'inventario-cristamine-v3';
 const urlsToCache = [
   './',
   './index.html',
-  './manifest.json',
-  'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css'
+  './manifest.json'
 ];
 
 self.addEventListener('install', function(event) {
@@ -31,12 +30,16 @@ self.addEventListener('activate', function(event) {
 });
 
 self.addEventListener('fetch', function(event) {
+  // Always fetch from network first, fallback to cache
   event.respondWith(
-    caches.match(event.request).then(function(response) {
-      if (response) return response;
-      return fetch(event.request).catch(function() {
-        return caches.match('./index.html');
+    fetch(event.request).then(function(response) {
+      const responseClone = response.clone();
+      caches.open(CACHE_NAME).then(function(cache) {
+        cache.put(event.request, responseClone);
       });
+      return response;
+    }).catch(function() {
+      return caches.match(event.request);
     })
   );
 });
