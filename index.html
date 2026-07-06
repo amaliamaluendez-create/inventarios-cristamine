@@ -301,6 +301,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
     <div class="search-box">
       <input type="text" id="tr-search" placeholder="Buscar item con stock..." oninput="filterTransferList(this.value)" autocomplete="off">
     </div>
+    <div id="tr-cat-filter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;overflow-x:auto;padding-bottom:2px"></div>
     <div id="tr-list"></div>
     <div id="tr-selected" style="display:none;background:var(--bg2);border-radius:var(--r);padding:.75rem;margin-bottom:10px">
       <div style="font-size:14px;font-weight:500" id="tr-item-name"></div>
@@ -365,6 +366,7 @@ let ocItems=[];
 let selectedSalItem=null;
 let activeSalCat='';
 let selectedTrItem=null;
+let activeTrCat='';
 let pinCallback=null;
 let activePlanta='Todas';
 
@@ -714,6 +716,9 @@ function crearArticuloNuevo(){
   buildSalCatFilter();
   const toast=document.getElementById('msg-carga');
   if(toast){toast.style.display='block';toast.textContent='✓ Artículo creado correctamente.';setTimeout(()=>toast.style.display='none',3000);}
+  // Hide carga manual box
+  const box=document.getElementById('carga-manual-box');
+  if(box) box.style.display='none';
 }
 
 function confirmarCargaManual(){
@@ -739,8 +744,10 @@ function confirmarCargaManual(){
   document.getElementById('cm-qty').value=0;
   document.getElementById('cm-obs').value='';
   const toast=document.getElementById('msg-carga');
-  toast.style.display='block';
-  setTimeout(()=>toast.style.display='none',3000);
+  if(toast){toast.style.display='block';setTimeout(()=>toast.style.display='none',3000);}
+  // Hide carga manual panel
+  const box=document.getElementById('carga-manual-box');
+  if(box) box.style.display='none';
 }
 
 const CATS=[];
@@ -1237,6 +1244,159 @@ async function updatePedidoStatus(id,status,ocNum){
   }catch(e){console.error('Error actualizando pedido:',e);}
 }
 
+function abrirModalStock(ref){
+  const it=inventory[ref];
+  if(!it) return;
+  const modal=document.createElement('div');
+  modal.id='stock-modal';
+  modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem';
+
+  const plantaOpts=PLANTAS.map(p=>`<option value="${p}" ${p===activePlanta&&activePlanta!=='Todas'?'selected':''}>${p}</option>`).join('');
+  const stockActual=PLANTAS.map(p=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:0.5px solid var(--border)"><span style="color:var(--text2)">${p}</span><strong>${it.stock[p]||0}</strong></div>`).join('');
+
+  modal.innerHTML=`<div style="background:var(--bg);border-radius:var(--rl);padding:1.25rem;width:100%;max-width:380px;max-height:90vh;overflow-y:auto">
+    <div style="font-size:14px;font-weight:600;color:var(--primary);margin-bottom:2px">${esc(it.name)}</div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:1rem">${esc(ref)} &middot; ${esc(it.cat)}</div>
+    
+    <div style="background:var(--bg2);border-radius:var(--r);padding:.75rem;margin-bottom:1rem">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Stock actual por planta</div>
+      ${stockActual}
+    </div>
+
+    <div class="field">
+      <label>Planta</label>
+      <select id="sm-planta" style="font-size:15px;padding:10px 12px">
+        ${plantaOpts}
+      </select>
+    </div>
+    <div class="field">
+      <label>Cantidad a sumar</label>
+      <input type="number" id="sm-qty" min="0" value="1" style="font-size:18px;text-align:center">
+    </div>
+    <div class="field">
+      <label>Operador</label>
+      <select id="sm-op" style="font-size:15px;padding:10px 12px">
+        <option value="">-- Tu nombre --</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Observación (opcional)</label>
+      <input type="text" id="sm-obs" placeholder="Ej: Stock inicial relevado">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:1rem">
+      <button onclick="confirmarModalStock('${ref}')" style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:var(--r);padding:12px;font-size:14px;font-weight:600;cursor:pointer">+ Sumar stock</button>
+      <button onclick="document.getElementById('stock-modal').remove()" style="flex:1;background:none;border:0.5px solid var(--border2);border-radius:var(--r);padding:12px;font-size:14px;cursor:pointer">Cancelar</button>
+    </div>
+  </div>`;
+
+  document.body.appendChild(modal);
+
+  // Populate operators
+  const smPlanta=document.getElementById('sm-planta');
+  const smOp=document.getElementById('sm-op');
+  if(smPlanta&&smOp){
+    const updateOps=()=>{
+      const ops=OPERADORES[smPlanta.value]||[];
+      smOp.innerHTML='<option value="">-- Tu nombre --</option>'+ops.map(o=>`<option value="${o}">${o}</option>`).join('');
+    };
+    smPlanta.onchange=updateOps;
+    updateOps();
+  }
+}
+
+function confirmarModalStock(ref){
+  const planta=document.getElementById('sm-planta')?.value;
+  const qty=parseInt(document.getElementById('sm-qty')?.value)||0;
+  const operador=document.getElementById('sm-op')?.value||'';
+  const obs=document.getElementById('sm-obs')?.value.trim()||'';
+  if(!planta){alert('Seleccioná la planta.');return;}
+  if(qty<=0){alert('Ingresá una cantidad mayor a 0.');return;}
+  if(!operador){alert('¿Quién está haciendo la carga?');return;}
+
+  if(!inventory[ref]) return;
+  PLANTAS.forEach(p=>{if(inventory[ref].stock[p]===undefined) inventory[ref].stock[p]=0;});
+  inventory[ref].stock[planta]=(inventory[ref].stock[planta]||0)+qty;
+
+  const mov={ts:now(),tipo:'Carga manual',planta,ref,item:inventory[ref].name,qty,operador,detalle:'Stock +'+qty+' u.'+(obs?' · '+obs:'')};
+  historial.push(mov);
+  saveInventarioItem(ref);
+  saveMovimiento(mov);
+
+  document.getElementById('stock-modal').remove();
+  updateMetrics();
+  filterStock(document.getElementById('stock-search')?.value||'');
+  renderHistorial();
+  showToast('msg-carga');
+}
+
+function deshacerMovimiento(idx){
+  const mov=historial[idx];
+  if(!mov) return;
+  if(!confirm('\u00bfDeshacer este movimiento?\n\n'+mov.tipo+': '+mov.item+' ×'+mov.qty+' en '+mov.planta)) return;
+
+  const it=inventory[mov.ref];
+
+  if(mov.tipo==='Salida' && it){
+    // Reverse salida: devolver stock
+    PLANTAS.forEach(p=>{if(it.stock[p]===undefined) it.stock[p]=0;});
+    it.stock[mov.planta]=(it.stock[mov.planta]||0)+mov.qty;
+    saveInventarioItem(mov.ref);
+  } else if((mov.tipo==='Entrada'||mov.tipo==='Entrada parcial'||mov.tipo==='Carga manual') && it){
+    // Reverse entrada: quitar stock
+    PLANTAS.forEach(p=>{if(it.stock[p]===undefined) it.stock[p]=0;});
+    it.stock[mov.planta]=Math.max(0,(it.stock[mov.planta]||0)-mov.qty);
+    saveInventarioItem(mov.ref);
+  } else if(mov.tipo==='Envío'){
+    // Reverse envío: devolver stock al origen y eliminar transferencia pendiente
+    const partes=mov.planta.split(' → ');
+    const desde=partes[0]?.trim();
+    if(it&&desde){
+      PLANTAS.forEach(p=>{if(it.stock[p]===undefined) it.stock[p]=0;});
+      it.stock[desde]=(it.stock[desde]||0)+mov.qty;
+      saveInventarioItem(mov.ref);
+    }
+    // Remove pending transfer
+    const trIdx=transfersPendientes.findIndex(t=>t.ref===mov.ref&&t.qty===mov.qty&&t.status==='pendiente');
+    if(trIdx>-1){
+      const tr=transfersPendientes[trIdx];
+      transfersPendientes.splice(trIdx,1);
+      if(syncEnabled&&supabase_client&&tr.id){
+        supabase_client.from('transferencias').delete().eq('id',tr.id);
+      }
+    }
+    renderTransfersPendientes();
+    renderEnViaje();
+  }
+
+  // Remove from historial
+  historial.splice(idx,1);
+
+  // Remove from Supabase
+  if(syncEnabled&&supabase_client&&mov.db_id){
+    supabase_client.from('movimientos').delete().eq('id',mov.db_id);
+  }
+
+  updateMetrics();
+  filterStock(document.getElementById('stock-search')?.value||'');
+  renderHistorial();
+}
+
+function eliminarOC(id){
+  if(!confirm('¿Eliminar esta OC? Esta acción no se puede deshacer.')) return;
+  const idx=ocList.findIndex(o=>Number(o.id)===Number(id));
+  if(idx===-1) return;
+  const oc=ocList[idx];
+  ocList.splice(idx,1);
+  // Remove from Supabase
+  if(syncEnabled&&supabase_client){
+    supabase_client.from('oc').delete().eq('num',oc.num).then(({error})=>{
+      if(error) console.error('Error eliminando OC:',error);
+    });
+  }
+  renderOCPendientes();
+  updateMetrics();
+}
+
 function initCatalogInventory(){
   // Initialize all catalog items in inventory if not already there
   catalog.forEach(item=>{
@@ -1350,7 +1510,7 @@ function renderStockList(entries){
       const pstocks=activePlanta==='Todas'
         ?`<div class="sp-wrap" style="margin-top:2px">${PLANTAS.filter(p=>it.stock[p]>0).map(p=>`<span class="sp-item">${p.split(' ')[0]}: <strong>${it.stock[p]}</strong></span>`).join('')}</div>`:'';
       const stColor=s===0?'var(--danger-text)':s<=it.min?'var(--warn-text)':'var(--text)';
-      return `<div style="display:flex;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--border)">
+      return `<div onclick="abrirModalStock('${esc(k)}')" style="display:flex;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--border);cursor:pointer;active:opacity:.7">
         <div style="flex:1;min-width:0;margin-right:8px">
           <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.name)}</div>
           <div style="font-size:10px;color:var(--text2)">${esc(k)}${it.equipo?' &middot; '+esc(it.equipo):''}</div>
@@ -1360,6 +1520,7 @@ function renderStockList(entries){
           <div style="font-size:16px;font-weight:700;color:${stColor}">${s}</div>
           <div style="font-size:9px;color:var(--text2)">mín:${it.min}</div>
           ${s===0?`<div style="font-size:9px;color:var(--danger-text);font-weight:600">SIN STOCK</div>`:s<=it.min?`<div style="font-size:9px;color:var(--warn-text);font-weight:600">BAJO</div>`:''}
+          <div style="font-size:9px;color:var(--primary);font-weight:500;margin-top:2px">+ cargar</div>
         </div>
       </div>`;
     }).join('');
@@ -1677,7 +1838,10 @@ function renderOCPendientes(){
       </div>
     </div>
     <div style="font-size:12px;margin-bottom:8px">${oc.items.map(it=>`<div style="padding:2px 0"><span class="badge b-gray">${esc(it.ref)}</span> ${esc(it.name.substring(0,28))} &times;${it.qty}${it.precioUSD?' &middot; u$s'+fmtUSD(it.precioUSD):it.precioARS?' &middot; $'+fmt(it.precioARS):''}</div>`).join('')}</div>
-    <button class="btn" onclick="this.disabled=true;this.textContent='Abriendo...';recibirOC(${oc.id})">&#10003; Confirmar recepción</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="this.disabled=true;this.textContent='Abriendo...';recibirOC(${oc.id})" style="flex:1">&#10003; Confirmar recepción</button>
+      <button onclick="eliminarOC(${oc.id})" style="background:none;border:0.5px solid var(--danger-text);color:var(--danger-text);border-radius:var(--r);padding:10px 14px;font-size:13px;cursor:pointer;flex-shrink:0">&#128465; Eliminar</button>
+    </div>
   </div>`).join('');
 }
 
@@ -1920,14 +2084,31 @@ function registrarSalida(){
 
 // ============ TRANSFER ============
 
+function buildTrCatFilter(desde){
+  const bar=document.getElementById('tr-cat-filter');
+  if(!bar) return;
+  const cats=[...new Set(Object.entries(inventory).filter(([k,it])=>(it.stock[desde]||0)>0).map(([,it])=>it.cat).filter(Boolean))].sort();
+  bar.innerHTML=`<button class="f-chip ${activeTrCat===''?'active':''}" onclick="setTrCat('')">Todos</button>`+
+    cats.map(c=>`<button class="f-chip ${activeTrCat===c?'active':''}" onclick="setTrCat('${c}')">${c}</button>`).join('');
+}
+
+function setTrCat(cat){
+  activeTrCat=cat;
+  buildTrCatFilter(document.getElementById('tr-desde')?.value||PLANTAS[0]);
+  renderTransferList();
+}
+
 function renderTransferList(){
   const desde=document.getElementById('tr-desde')?.value||PLANTAS[0];
   const el=document.getElementById('tr-list');
   if(!el) return;
+  buildTrCatFilter(desde);
   let e=Object.entries(inventory).filter(([k,it])=>(it.stock[desde]||0)>0);
+  if(activeTrCat) e=e.filter(([k,it])=>it.cat===activeTrCat);
   const q=(document.getElementById('tr-search')?.value||'').toLowerCase();
-  if(q) e=e.filter(([k,it])=>k.toLowerCase().includes(q)||it.name.toLowerCase().includes(q));
-  if(!e.length){el.innerHTML='<div class="empty">Sin stock en esta planta.</div>';return;}
+  if(q) e=e.filter(([k,it])=>k.toLowerCase().includes(q)||it.name.toLowerCase().includes(q)||(it.cat&&it.cat.toLowerCase().includes(q)));
+  e.sort(([,a],[,b])=>(b.stock[desde]||0)-(a.stock[desde]||0));
+  if(!e.length){el.innerHTML='<div class="empty">Sin stock en esta planta para esta categoría.</div>';return;}
   el.innerHTML=e.map(([k,it])=>`<div class="sr-item" onclick="selectTrItem('${esc(k)}')" style="border:0.5px solid var(--border);border-radius:var(--r);margin-bottom:4px;padding:10px 12px">
     <span class="sr-ref">${esc(k)}</span>${esc(it.name)}
     <span style="float:right;font-size:11px;color:var(--text2)">stock: ${it.stock[desde]||0}</span>
@@ -1973,12 +2154,21 @@ function registrarTransfer(){
   renderHistorial();
   renderTransfersPendientes();
   renderStockPendientesAviso();
-  document.getElementById('tr-search').value='';
-  document.getElementById('tr-selected').style.display='none';
-  document.getElementById('tr-qty').value=1;
-  populateOperadores('tr-quien',desde);
+  // Full reset of transfer form
   selectedTrItem=null;
-  document.getElementById('tr-list').style.display='block';
+  activeTrCat='';
+  const trSearch=document.getElementById('tr-search');
+  const trSelected=document.getElementById('tr-selected');
+  const trList=document.getElementById('tr-list');
+  const trQty=document.getElementById('tr-qty');
+  if(trSearch) trSearch.value='';
+  if(trSelected) trSelected.style.display='none';
+  if(trList) trList.style.display='block';
+  if(trQty) trQty.value=1;
+  populateOperadores('tr-quien',desde);
+  // Reset category chips
+  const bar=document.getElementById('tr-cat-filter');
+  if(bar) bar.innerHTML='';
   renderTransferList();
   showToast('msg-transfer');
 }
@@ -2087,11 +2277,15 @@ function renderHistorial(){
 
   if(cnt) cnt.textContent=h.length+' movimiento(s)';
   if(!h.length){el.innerHTML='<div class="empty">Sin movimientos para los filtros seleccionados.</div>';return;}
-  const colors={Entrada:'b-info',Salida:'b-gray',Transfer:'b-tr',Envío:'b-warn','Recepción':'b-ok','Uso directo':'b-gray','Uso directo recibido':'b-ok','Despachado':'b-warn','Pendiente despacho':'b-pend'};
-  el.innerHTML=h.map(x=>`<div class="item-card">
+  const colors={Entrada:'b-info','Entrada parcial':'b-partial',Salida:'b-gray',Transfer:'b-tr',Envío:'b-warn','Recepción':'b-ok','Uso directo':'b-gray','Uso directo recibido':'b-ok','Despachado':'b-warn','Pendiente despacho':'b-pend','Carga manual':'b-info'};
+  const undoableTypes=['Salida','Carga manual','Entrada','Entrada parcial','Envío'];
+  el.innerHTML=h.map((x,i)=>`<div class="item-card">
     <div style="display:flex;justify-content:space-between;margin-bottom:3px">
       <span class="badge ${colors[x.tipo]||'b-gray'}">${esc(x.tipo)}</span>
-      <span style="font-size:11px;color:var(--text2)">${x.ts}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:var(--text2)">${x.ts}</span>
+        ${undoableTypes.includes(x.tipo)?`<button onclick="deshacerMovimiento(${historial.length-1-i})" style="font-size:10px;padding:2px 8px;border-radius:10px;border:0.5px solid var(--danger-text);background:none;color:var(--danger-text);cursor:pointer">&#8617; Deshacer</button>`:''}
+      </div>
     </div>
     <div style="font-size:13px;font-weight:500;margin-bottom:2px">${esc(x.item)} &times;${x.qty}</div>
     <div style="font-size:11px;color:var(--text2)">${esc(x.ref)} &middot; ${esc(x.planta)}</div>
