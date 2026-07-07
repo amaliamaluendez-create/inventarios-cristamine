@@ -434,15 +434,17 @@ async function importarOCsBerjerman(input){
     for(let i=0;i<rows.length;i++){
       const row=rows[i];
       // OC header: col3==='OC' and col7 is number
-      if(row[3]==='OC' && row[7] && !isNaN(Number(row[7]))){
+      if(row[3]==='OC' && row[7] && String(row[7]).trim()){
         const provCod=String(row[0]||'').padStart(6,'0');
         const provNombre=proveedores.find(p=>p.cod===provCod)?.nombre||('Prov '+provCod);
+        const nroOC=String(row[7]).trim().replace(/^0+/,'')||String(row[7]).trim();
+        const fechaOC=row[2]?String(row[2]).substring(0,10):(row[1]?String(row[1]).substring(0,10):'');
         currentOC={
           id:nextId(),
-          num:String(row[7]),
+          num:nroOC,
           prov:provNombre,
           prov_cod:provCod,
-          fecha:row[1]?String(row[1]).substring(0,10):'',
+          fecha:fechaOC,
           dest:document.getElementById('oc-dest').value||'Berazategui',
           items:[],
           status:'pendiente',
@@ -452,8 +454,10 @@ async function importarOCsBerjerman(input){
         ocs.push(currentOC);
       }
       // Item type 1: col0=cod(str), col2=desc(str), col3=qty(num)
-      else if(currentOC && row[0] && typeof row[0]==='string' && row[0]!=='P' && row[2] && typeof row[2]==='string' && row[3] && !isNaN(Number(row[3]))){
-        const moneda=row[6]&&String(row[6]).includes('$s')?'USD':'ARS';
+      else if(currentOC && row[0] && typeof row[0]==='string' && row[0]!=='P' && row[0]!=='Autorización' && row[2] && typeof row[2]==='string' && row[2].trim().length>5 && (row[4]&&!isNaN(Number(row[4]))&&Number(row[4])>0 || row[3]&&!isNaN(Number(row[3]))&&Number(row[3])>0&&row[3]!==6750)){
+        const qty1Raw=Number(row[4]||0)>0?Number(row[4]):Number(row[3]||0);
+        const moneda=row[7]&&String(row[7]).includes('$s')?'USD':(row[6]&&String(row[6]).includes('$s')?'USD':'ARS');
+        const precio1=Number(row[6]||0);
         const desc1=String(row[2]).trim();
         const codContable1=String(row[0]).trim();
         const matchCat1=catalog.find(c=>c.name.toLowerCase()===desc1.toLowerCase())||
