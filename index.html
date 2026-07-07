@@ -318,8 +318,31 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
   </div>
 </div>
 <div class="panel" id="panel-historial">
-  <div class="field" style="margin-bottom:10px"><select id="hist-filter" onchange="renderHistorial()" style="font-size:13px;padding:8px 10px;width:100%;border:0.5px solid var(--border2);border-radius:var(--r)"><option value="">Todas las plantas</option></select></div>
-  <div id="hist-list"><div class="empty">Sin movimientos a&#250;n.</div></div>
+  <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+    <input type="search" id="hist-search" placeholder="Buscar artículo, Nº OC (ej: 6750), proveedor, operador..." oninput="renderHistorial()" style="width:100%;font-size:13px;padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--r)">
+    <div class="row2">
+      <select id="hist-filter" onchange="renderHistorial()" style="font-size:13px;padding:9px 10px;border:0.5px solid var(--border2);border-radius:var(--r);width:100%">
+        <option value="">Todas las plantas</option>
+      </select>
+      <select id="hist-tipo" onchange="renderHistorial()" style="font-size:13px;padding:9px 10px;border:0.5px solid var(--border2);border-radius:var(--r);width:100%">
+        <option value="">Todos los tipos</option>
+        <option>Entrada</option>
+        <option>Entrada parcial</option>
+        <option>Salida</option>
+        <option>Envío</option>
+        <option>Recepción</option>
+        <option>Uso directo</option>
+        <option>Transfer</option>
+        <option>Carga manual</option>
+      </select>
+    </div>
+    <div class="row2">
+      <div><label style="font-size:11px;color:var(--text2)">Desde</label><input type="date" id="hist-desde" onchange="renderHistorial()" style="width:100%;font-size:13px;padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--r)"></div>
+      <div><label style="font-size:11px;color:var(--text2)">Hasta</label><input type="date" id="hist-hasta" onchange="renderHistorial()" style="width:100%;font-size:13px;padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--r)"></div>
+    </div>
+  </div>
+  <div id="hist-count" style="font-size:11px;color:var(--text2);margin-bottom:8px"></div>
+  <div id="hist-list"><div class="empty">Sin movimientos aún.</div></div>
 </div>
 <div class="panel" id="panel-config">
   <div class="card">
