@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inventario-cristamine-v3';
+const CACHE_NAME = 'inventario-cristamine-v5';
 const urlsToCache = [
   './',
   './index.html',
