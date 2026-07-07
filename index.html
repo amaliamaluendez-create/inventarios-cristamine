@@ -1826,39 +1826,69 @@ function despacharOC(id){
 
 function renderOCPendientes(){
   const el=document.getElementById('oc-pendientes-list');
-  const pend=ocList.filter(o=>(o.status==='pendiente'||o.status==='parcial')&&(activePlanta==='Todas'||o.dest.trim()===activePlanta.trim()));
+  let pend=ocList.filter(o=>(o.status==='pendiente'||o.status==='parcial')&&(activePlanta==='Todas'||o.dest.trim()===activePlanta.trim()));
+
+  // Apply search filter
+  const q=(document.getElementById('oc-search')?.value||'').toLowerCase().trim();
+  if(q) pend=pend.filter(o=>
+    o.num.includes(q)||
+    (o.prov&&o.prov.toLowerCase().includes(q))||
+    (o.dest&&o.dest.toLowerCase().includes(q))
+  );
+
   if(!pend.length){el.innerHTML='<div class="empty">Sin OC pendientes.</div>';return;}
-  el.innerHTML=pend.map(oc=>`<div class="item-card" data-oc-id="${oc.id}">
-    <div style="margin-bottom:8px">
-      <div style="font-size:13px;font-weight:500;margin-bottom:4px">OC ${esc(oc.num)} 
-        ${oc.num.includes('(parcial)')?'<span class="badge b-partial">Recibida parcialmente</span>':'<span class="badge b-pend">Pendiente de recibir</span>'}
-      </div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:6px">${esc(oc.prov||'')}${oc.fecha?' &middot; ETA '+oc.fecha:''}</div>
-      <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-        <div style="flex:1;min-width:120px">
-          <div style="font-size:11px;color:var(--text2);margin-bottom:2px">Destino</div>
-          <select onchange="editOCDest(${oc.id},this.value)" style="width:100%;font-size:12px;padding:6px 8px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg)">
-            ${PLANTAS.map(p=>`<option value="${p}" ${p===oc.dest?'selected':''}>${p}</option>`).join('')}
-          </select>
+
+  el.innerHTML=pend.map(oc=>`<div class="item-card" data-oc-id="${oc.id}" style="padding:0;overflow:hidden">
+    <!-- Header compacto - clickeable -->
+    <div onclick="toggleOCExpand(${oc.id})" style="display:flex;justify-content:space-between;align-items:center;padding:12px;cursor:pointer">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:14px;font-weight:700">OC ${esc(oc.num)}</span>
+          ${oc.num.includes('(parcial)')?'<span class="badge b-partial">Recibida parcialmente</span>':'<span class="badge b-pend">Pendiente de recibir</span>'}
         </div>
-        <div style="flex:1;min-width:120px">
-          <div style="font-size:11px;color:var(--text2);margin-bottom:2px">Tipo</div>
-          <select onchange="editOCGeneraStock(${oc.id},this.value)" style="width:100%;font-size:12px;padding:6px 8px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg)">
-            <option value="true" ${oc.generaStock!==false?'selected':''}>&#10003; Genera stock</option>
-            <option value="false" ${oc.generaStock===false?'selected':''}>&#10007; Uso directo</option>
-          </select>
-        </div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(oc.prov||'')}${oc.fecha?' &middot; ETA '+oc.fecha:''} &middot; ${oc.items.length} ítem(s)</div>
       </div>
+      <span id="oc-arrow-${oc.id}" style="font-size:14px;color:var(--text2);flex-shrink:0;margin-left:8px">&#9660;</span>
     </div>
-    <div style="font-size:12px;margin-bottom:8px">${oc.items.map(it=>`<div style="padding:2px 0"><span class="badge b-gray">${esc(it.ref)}</span> ${esc(it.name.substring(0,28))} &times;${it.qty}${it.precioUSD?' &middot; u$s'+fmtUSD(it.precioUSD):it.precioARS?' &middot; $'+fmt(it.precioARS):''}</div>`).join('')}</div>
-    <div style="display:flex;gap:8px">
-      <button class="btn" onclick="this.disabled=true;this.textContent='Abriendo...';recibirOC(${oc.id})" style="flex:1">&#10003; Confirmar recepción</button>
-      <button onclick="eliminarOC(${oc.id})" style="background:none;border:0.5px solid var(--danger-text);color:var(--danger-text);border-radius:var(--r);padding:10px 14px;font-size:13px;cursor:pointer;flex-shrink:0">&#128465; Eliminar</button>
+
+    <!-- Contenido expandible -->
+    <div id="oc-expand-${oc.id}" style="display:none;padding:0 12px 12px">
+      <div style="border-top:0.5px solid var(--border);padding-top:10px;margin-bottom:8px">
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:2px">Destino</div>
+            <select onchange="editOCDest(${oc.id},this.value)" style="width:100%;font-size:12px;padding:6px 8px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg)">
+              ${PLANTAS.map(p=>`<option value="${p}" ${p===oc.dest?'selected':''}>${p}</option>`).join('')}
+            </select>
+          </div>
+          <div style="flex:1;min-width:120px">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:2px">Tipo</div>
+            <select onchange="editOCGeneraStock(${oc.id},this.value)" style="width:100%;font-size:12px;padding:6px 8px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg)">
+              <option value="true" ${oc.generaStock!==false?'selected':''}>&#10003; Genera stock</option>
+              <option value="false" ${oc.generaStock===false?'selected':''}>&#10007; Uso directo</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:12px;margin-bottom:10px">${oc.items.map(it=>`<div style="padding:3px 0;border-bottom:0.5px solid var(--border)"><span class="badge b-gray">${esc(it.ref)}</span> ${esc(it.name.substring(0,35))} &times;${it.qty}${it.precioUSD?' &middot; u$s'+fmtUSD(it.precioUSD):it.precioARS?' &middot; $'+fmt(it.precioARS):''}</div>`).join('')}</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="this.disabled=true;this.textContent='Abriendo...';recibirOC(${oc.id})" style="flex:1">&#10003; Confirmar recepción</button>
+          <button onclick="eliminarOC(${oc.id})" style="background:none;border:0.5px solid var(--danger-text);color:var(--danger-text);border-radius:var(--r);padding:10px 14px;font-size:13px;cursor:pointer;flex-shrink:0">&#128465;</button>
+        </div>
+      </div>
     </div>
   </div>`).join('');
 }
 
-const _procesandoOC=new Set();
+function toggleOCExpand(id){
+  const body=document.getElementById('oc-expand-'+id);
+  const arrow=document.getElementById('oc-arrow-'+id);
+  if(!body) return;
+  const open=body.style.display==='block';
+  body.style.display=open?'none':'block';
+  if(arrow) arrow.style.transform=open?'':'rotate(180deg)';
+}
+
+
 function recibirOC(id){
   if(_procesandoOC.has(Number(id))) return;
   _procesandoOC.add(Number(id));
@@ -2301,7 +2331,7 @@ function renderHistorial(){
       </div>
     </div>
     <div style="font-size:13px;font-weight:500;margin-bottom:2px">${esc(x.item)} &times;${x.qty}</div>
-    <div style="font-size:11px;color:var(--text2)">${esc(x.ref)} &middot; ${esc(x.planta)}</div>
+    <div style="font-size:11px;color:var(--text2)">${x.ref&&x.ref.startsWith('OC ')?`<span style="background:var(--primary);color:#fff;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600">${esc(x.ref)}</span>`:esc(x.ref)} &middot; ${esc(x.planta)}</div>
     ${x.operador?`<div style="font-size:11px;color:var(--text2)">Operador: <strong>${esc(x.operador)}</strong></div>`:''}
     <div style="font-size:11px;color:var(--text3)">${esc(x.detalle)}</div>
   </div>`).join('');
