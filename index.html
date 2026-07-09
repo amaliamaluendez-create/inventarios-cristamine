@@ -1200,6 +1200,7 @@ async function initSupabase(){
     console.log('Supabase conectado');
     await loadPinsFromSupabase();
     await loadOperadoresFromSupabase();
+    populateLoginOperadores();
     await loadFromSupabase();
   }catch(e){
     console.error('Error Supabase:',e);
