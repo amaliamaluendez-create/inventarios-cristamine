@@ -1403,22 +1403,47 @@ function confirmarModalStock(ref){
 function deshacerMovimiento(idx){
   const mov=historial[idx];
   if(!mov) return;
-  if(!confirm('\u00bfDeshacer este movimiento?\n\n'+mov.tipo+': '+mov.item+' ×'+mov.qty+' en '+mov.planta)) return;
+  if(!confirm('¿Deshacer este movimiento?\n\n'+mov.tipo+': '+mov.item+' ×'+mov.qty+' en '+mov.planta)) return;
 
   const it=inventory[mov.ref];
 
   if(mov.tipo==='Salida' && it){
-    // Reverse salida: devolver stock
+    // Devolver stock
     PLANTAS.forEach(p=>{if(it.stock[p]===undefined) it.stock[p]=0;});
     it.stock[mov.planta]=(it.stock[mov.planta]||0)+mov.qty;
     saveInventarioItem(mov.ref);
+
   } else if((mov.tipo==='Entrada'||mov.tipo==='Entrada parcial'||mov.tipo==='Carga manual') && it){
-    // Reverse entrada: quitar stock
+    // Quitar stock
     PLANTAS.forEach(p=>{if(it.stock[p]===undefined) it.stock[p]=0;});
     it.stock[mov.planta]=Math.max(0,(it.stock[mov.planta]||0)-mov.qty);
     saveInventarioItem(mov.ref);
+    // Si es recepción de OC, volver la OC a pendiente
+    if(mov.tipo==='Entrada'||mov.tipo==='Entrada parcial'){
+      const ocNum=mov.ref.replace('OC ','').replace(' (parcial)','').trim();
+      // Buscar en ocList primero
+      let oc=ocList.find(o=>o.num===ocNum);
+      if(oc){
+        oc.status='pendiente';
+        updateOCStatus(ocNum,'pendiente');
+      } else {
+        // Recargar desde Supabase
+        if(syncEnabled&&supabase_client){
+          supabase_client.from('oc').update({status:'pendiente'}).eq('num',ocNum).then(()=>{
+            supabase_client.from('oc').select('*').eq('num',ocNum).then(({data})=>{
+              if(data&&data[0]){
+                const o=data[0];
+                ocList.push({id:o.id,num:o.num,prov:o.prov,prov_cod:o.prov_cod||'',fecha:o.fecha||'',dest:o.dest||'Berazategui',items:o.items||[],status:'pendiente',generaStock:o.genera_stock!==false,created:o.created_at});
+                renderOCPendientes();
+              }
+            });
+          });
+        }
+      }
+    }
+
   } else if(mov.tipo==='Envío'){
-    // Reverse envío: devolver stock al origen y eliminar transferencia pendiente
+    // Devolver stock al origen y eliminar transfer pendiente
     const partes=mov.planta.split(' → ');
     const desde=partes[0]?.trim();
     if(it&&desde){
@@ -1426,7 +1451,6 @@ function deshacerMovimiento(idx){
       it.stock[desde]=(it.stock[desde]||0)+mov.qty;
       saveInventarioItem(mov.ref);
     }
-    // Remove pending transfer
     const trIdx=transfersPendientes.findIndex(t=>t.ref===mov.ref&&t.qty===mov.qty&&t.status==='pendiente');
     if(trIdx>-1){
       const tr=transfersPendientes[trIdx];
@@ -1439,18 +1463,25 @@ function deshacerMovimiento(idx){
     renderEnViaje();
   }
 
-  // Remove from historial
+  // Eliminar del historial local
   historial.splice(idx,1);
 
-  // Remove from Supabase
-  if(syncEnabled&&supabase_client&&mov.db_id){
-    supabase_client.from('movimientos').delete().eq('id',mov.db_id);
+  // Eliminar de Supabase - buscar por campos del movimiento
+  if(syncEnabled&&supabase_client){
+    supabase_client.from('movimientos')
+      .delete()
+      .eq('ts',mov.ts)
+      .eq('tipo',mov.tipo)
+      .eq('ref',mov.ref)
+      .then(({error})=>{if(error) console.error('Error borrando movimiento:',error);});
   }
 
   updateMetrics();
   filterStock(document.getElementById('stock-search')?.value||'');
+  renderOCPendientes();
   renderHistorial();
 }
+
 
 function eliminarOC(id){
   if(!confirm('¿Eliminar esta OC? Esta acción no se puede deshacer.')) return;
