@@ -1150,6 +1150,7 @@ function agregarOperador(){
   if(!OPERADORES[planta]) OPERADORES[planta]=[];
   if(OPERADORES[planta].includes(nombre)){alert('Ese operador ya existe en esta planta.');return;}
   OPERADORES[planta].push(nombre);
+  saveOperadorToSupabase(planta,nombre);
   document.getElementById('cfg-nuevo-op').value='';
   renderConfigOperadores();
   // Update pedido selector
@@ -1163,8 +1164,9 @@ function agregarOperador(){
 function eliminarOperador(planta,idx){
   if(!OPERADORES[planta]) return;
   const nombre=OPERADORES[planta][idx];
-  if(!confirm('\u00bfEliminar a '+nombre+' de '+planta+'?')) return;
+  if(!confirm('¿Eliminar a '+nombre+' de '+planta+'?')) return;
   OPERADORES[planta].splice(idx,1);
+  deleteOperadorFromSupabase(planta,nombre);
   renderConfigOperadores();
 }
 
@@ -1197,6 +1199,7 @@ async function initSupabase(){
     syncEnabled=true;
     console.log('Supabase conectado');
     await loadPinsFromSupabase();
+    await loadOperadoresFromSupabase();
     await loadFromSupabase();
   }catch(e){
     console.error('Error Supabase:',e);
@@ -1476,6 +1479,38 @@ function populateLoginOperadores(){
   const todos=[...new Set(Object.values(OPERADORES).flat())].sort();
   todos.push('AMALIA');
   sel.innerHTML='<option value="">-- Seleccioná tu nombre --</option>'+todos.map(o=>`<option value="${o}">${o}</option>`).join('');
+}
+
+async function loadOperadoresFromSupabase(){
+  if(!syncEnabled||!supabase_client) return;
+  try{
+    const {data}=await supabase_client.from('operadores_config').select('*');
+    if(data&&data.length>0){
+      // Reset OPERADORES and rebuild from Supabase
+      Object.keys(OPERADORES).forEach(k=>OPERADORES[k]=[]);
+      data.forEach(row=>{
+        if(!OPERADORES[row.planta]) OPERADORES[row.planta]=[];
+        if(!OPERADORES[row.planta].includes(row.operador)){
+          OPERADORES[row.planta].push(row.operador);
+        }
+      });
+      console.log('Operadores cargados desde Supabase');
+    }
+  }catch(e){console.log('Operadores: usando defaults');}
+}
+
+async function saveOperadorToSupabase(planta,operador){
+  if(!syncEnabled||!supabase_client) return;
+  try{
+    await supabase_client.from('operadores_config').upsert({planta,operador},{onConflict:'planta,operador'});
+  }catch(e){console.error('Error guardando operador:',e);}
+}
+
+async function deleteOperadorFromSupabase(planta,operador){
+  if(!syncEnabled||!supabase_client) return;
+  try{
+    await supabase_client.from('operadores_config').delete().eq('planta',planta).eq('operador',operador);
+  }catch(e){console.error('Error eliminando operador:',e);}
 }
 
 async function loadPinsFromSupabase(){
