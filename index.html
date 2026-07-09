@@ -1413,11 +1413,34 @@ function deshacerMovimiento(idx){
     it.stock[mov.planta]=(it.stock[mov.planta]||0)+mov.qty;
     saveInventarioItem(mov.ref);
 
-  } else if((mov.tipo==='Entrada'||mov.tipo==='Entrada parcial'||mov.tipo==='Carga manual') && it){
-    // Quitar stock
-    PLANTAS.forEach(p=>{if(it.stock[p]===undefined) it.stock[p]=0;});
-    it.stock[mov.planta]=Math.max(0,(it.stock[mov.planta]||0)-mov.qty);
-    saveInventarioItem(mov.ref);
+  } else if((mov.tipo==='Entrada'||mov.tipo==='Entrada parcial'||mov.tipo==='Carga manual')){
+    if(mov.tipo==='Carga manual' && it){
+      // Simple: quitar stock del artículo
+      PLANTAS.forEach(p=>{if(it.stock[p]===undefined) it.stock[p]=0;});
+      it.stock[mov.planta]=Math.max(0,(it.stock[mov.planta]||0)-mov.qty);
+      saveInventarioItem(mov.ref);
+    } else if(mov.tipo==='Entrada'||mov.tipo==='Entrada parcial'){
+      // OC reception: discount each item from the OC
+      const ocNum=mov.ref.replace('OC ','').replace(' (parcial)','').trim();
+      const oc=ocList.find(o=>o.num===ocNum);
+      if(oc&&oc.items){
+        oc.items.forEach(ocIt=>{
+          const invIt=inventory[ocIt.ref];
+          if(invIt){
+            PLANTAS.forEach(p=>{if(invIt.stock[p]===undefined) invIt.stock[p]=0;});
+            invIt.stock[mov.planta]=Math.max(0,(invIt.stock[mov.planta]||0)-ocIt.qty);
+            saveInventarioItem(ocIt.ref);
+          }
+        });
+      } else {
+        // Fallback: discount mov.qty from mov.ref
+        if(it){
+          PLANTAS.forEach(p=>{if(it.stock[p]===undefined) it.stock[p]=0;});
+          it.stock[mov.planta]=Math.max(0,(it.stock[mov.planta]||0)-mov.qty);
+          saveInventarioItem(mov.ref);
+        }
+      }
+    }
     // Si es recepción de OC, volver la OC a pendiente
     if(mov.tipo==='Entrada'||mov.tipo==='Entrada parcial'){
       const ocNum=mov.ref.replace('OC ','').replace(' (parcial)','').trim();
