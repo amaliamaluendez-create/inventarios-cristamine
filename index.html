@@ -956,6 +956,7 @@ function confirmarRevisionNuevos(){
       // Initialize in inventory if not exists
       if(!inventory[refVincular]){
         inventory[refVincular]={name:catItem?catItem.name:it.name,cat:catItem?catItem.cat:'REP',equipo:'',min:1,precioARS:0,precioUSD:0,stock:Object.fromEntries(PLANTAS.map(p=>[p,0]))};
+        saveInventarioItem(refVincular);
       }
       // Remove auto-created item from catalog
       const idx=catalog.findIndex(c=>c.ref===it.ref);
@@ -988,6 +989,8 @@ function confirmarRevisionNuevos(){
       if(!inventory[newRef]){
         inventory[newRef]={name:it.name,cat,equipo:'',min:1,precioARS:0,precioUSD:0,stock:Object.fromEntries(PLANTAS.map(p=>[p,0]))};
       }
+      // Save new item to Supabase
+      saveInventarioItem(newRef);
       // Update OC items ref
       nuevas.forEach(oc=>{
         oc.items.forEach(ocIt=>{if(ocIt.ref===oldRef){ocIt.ref=newRef;ocIt.cat=cat;}});
@@ -1322,7 +1325,7 @@ function abrirModalStock(ref){
   modal.id='stock-modal';
   modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem';
 
-  const plantaOpts=PLANTAS.map(p=>`<option value="${p}" ${p===activePlanta&&activePlanta!=='Todas'?'selected':''}>${p}</option>`).join('');
+  const plantaOpts=PLANTAS.map(p=>`<option value="${p}" ${p===oc.dest?'selected':''}>${p}</option>`).join('');
   const stockActual=PLANTAS.map(p=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:0.5px solid var(--border)"><span style="color:var(--text2)">${p}</span><strong>${it.stock[p]||0}</strong></div>`).join('');
 
   modal.innerHTML=`<div style="background:var(--bg);border-radius:var(--rl);padding:1.25rem;width:100%;max-width:380px;max-height:90vh;overflow-y:auto">
@@ -1676,6 +1679,17 @@ function initUI(){
   }
   const hf=document.getElementById('hist-filter');
   if(hf) hf.innerHTML='<option value="">Todas las plantas</option>'+PLANTAS.map(p=>`<option>${p}</option>`).join('');
+}
+
+function renderStockPendientesAviso(){
+  // Shows pending items notice in stock view - stub if not implemented
+  const el=document.getElementById('stock-pendientes-aviso');
+  if(!el) return;
+  const pendientes=transfersPendientes.filter(t=>t.status==='pendiente'&&t.hacia===activePlanta);
+  if(!pendientes.length){el.innerHTML='';return;}
+  el.innerHTML=`<div style="background:var(--warn-bg);color:var(--warn-text);border-radius:var(--r);padding:8px 12px;font-size:12px;margin-bottom:8px">
+    &#128666; ${pendientes.length} ítem(s) en camino hacia esta planta
+  </div>`;
 }
 
 function selectPlanta(el){
@@ -2069,6 +2083,7 @@ function despacharOC(id){
 }
 
 function renderOCPendientes(){
+  _procesandoOC.clear();
   const el=document.getElementById('oc-pendientes-list');
   let pend=ocList.filter(o=>(o.status==='pendiente'||o.status==='parcial')&&(activePlanta==='Todas'||o.dest.trim()===activePlanta.trim()));
 
@@ -2115,7 +2130,7 @@ function renderOCPendientes(){
         </div>
         <div style="font-size:12px;margin-bottom:10px">${oc.items.map(it=>`<div style="padding:3px 0;border-bottom:0.5px solid var(--border)"><span class="badge b-gray">${esc(it.ref)}</span> ${esc(it.name.substring(0,35))} &times;${it.qty}${it.precioUSD?' &middot; u$s'+fmtUSD(it.precioUSD):it.precioARS?' &middot; $'+fmt(it.precioARS):''}</div>`).join('')}</div>
         <div style="display:flex;gap:8px">
-          <button class="btn" onclick="this.disabled=true;this.textContent='Abriendo...';recibirOC(${oc.id})" style="flex:1">&#10003; Confirmar recepción</button>
+          <button class="btn" onclick="recibirOC(${oc.id})" style="flex:1">&#10003; Confirmar recepción</button>
           <button onclick="eliminarOC(${oc.id})" style="background:none;border:0.5px solid var(--danger-text);color:var(--danger-text);border-radius:var(--r);padding:10px 14px;font-size:13px;cursor:pointer;flex-shrink:0">&#128465;</button>
         </div>
       </div>
@@ -2245,13 +2260,13 @@ function confirmarRecepcionModal(id){
       });
       const tipoEntrada=esTotal?'Entrada':'Entrada parcial';
       historial.push({ts:now(),tipo:tipoEntrada,planta,ref:'OC '+oc.num,item:'Recepción OC'+(esTotal?'':' (parcial)'),qty:totalRecibido,operador,detalle:(oc.prov||'')+' → '+planta+(totalPendiente>0?' · Falta: '+totalPendiente+' u.':'')});
-      if(planta!==oc.dest){
+      if(planta.trim()!==oc.dest.trim()){
         itemsRecibidos.forEach(it=>{inventory[it.ref].stock[planta]-=it.qty;});
         ocPendientesEnviar.push({id:nextId(),ocNum:oc.num,items:itemsRecibidos,desde:planta,hacia:oc.dest,ts:now(),status:'pendiente',generaStock:true});
       }
     } else {
       historial.push({ts:now(),tipo:'Uso directo',planta,ref:'OC '+oc.num,item:'Recepción OC',qty:totalRecibido,operador,detalle:'Uso directo → '+planta+(totalPendiente>0?' · Falta: '+totalPendiente+' u.':'')});
-      if(planta!==oc.dest){
+      if(planta.trim()!==oc.dest.trim()){
         ocPendientesEnviar.push({id:nextId(),ocNum:oc.num,items:itemsRecibidos,desde:planta,hacia:oc.dest,ts:now(),status:'pendiente',generaStock:false,usoDirecto:true});
       }
     }
