@@ -1724,8 +1724,10 @@ function updateMetrics(){
   document.getElementById('m-items').textContent=con;
   document.getElementById('m-low').textContent=low;
   document.getElementById('m-oc').textContent=ocList.filter(o=>o.status==='pendiente'||o.status==='parcial').length+ocPendientesEnviar.filter(o=>o.status==='pendiente').length;
-  document.getElementById('m-ars').textContent='$'+fmt(tARS);
-  document.getElementById('m-usd').textContent='u$s '+fmtUSD(tUSD);
+  const mArs=document.getElementById('m-ars');
+  const mUsd=document.getElementById('m-usd');
+  if(mArs) mArs.textContent='$'+fmt(tARS);
+  if(mUsd) mUsd.textContent='u$s '+fmtUSD(tUSD);
 }
 
 function getEstado(s,min){
