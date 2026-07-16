@@ -112,7 +112,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 </div>
 
 <div class="wrap" id="app-wrap" style="display:none">
-<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v1.8</span></h1>
+<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v1.9</span></h1>
 <div class="metrics">
   <div class="metric"><div class="metric-label">Con stock</div><div class="metric-value" id="m-items">0</div></div>
   <div class="metric"><div class="metric-label">OC pendientes</div><div class="metric-value info" id="m-oc">0</div></div>
@@ -1248,6 +1248,10 @@ async function loadFromSupabase(){
         const stock=row.stock||{};
         PLANTAS.forEach(p=>{if(stock[p]===undefined) stock[p]=0;});
         inventory[row.ref]={name:row.name,cat:row.cat,equipo:row.equipo||'',min:row.min||1,precioARS:row.precio_ars||0,precioUSD:row.precio_usd||0,stock};
+        // If article not in catalog, add it
+        if(!catalog.find(c=>c.ref===row.ref)){
+          catalog.push({ref:row.ref,name:row.name,cat:row.cat,equipo:row.equipo||''});
+        }
       });
     }
     // Load OC
