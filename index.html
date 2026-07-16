@@ -112,7 +112,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 </div>
 
 <div class="wrap" id="app-wrap" style="display:none">
-<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v1.7</span></h1>
+<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v1.8</span></h1>
 <div class="metrics">
   <div class="metric"><div class="metric-label">Con stock</div><div class="metric-value" id="m-items">0</div></div>
   <div class="metric"><div class="metric-label">OC pendientes</div><div class="metric-value info" id="m-oc">0</div></div>
@@ -766,8 +766,23 @@ function crearArticuloNuevo(){
   // Add to inventory
   inventory[ref]={name,cat,equipo:'',min:1,precioARS:0,precioUSD:0,stock:Object.fromEntries(PLANTAS.map(p=>[p,0]))};
   inventory[ref].stock[planta]=qty;
-  // Log
-  if(qty>0) historial.push({ts:now(),tipo:'Carga manual',planta,ref,item:name,qty,operador:'',detalle:'Artículo nuevo creado'});
+
+  // Save to Supabase
+  if(syncEnabled&&supabase_client){
+    saveInventarioItem(ref);
+    if(qty>0){
+      const movNuevo={ts:now(),tipo:'Carga manual',planta,ref,item:name,qty,operador:currentOperador||'',detalle:'Artículo nuevo creado'};
+      historial.push(movNuevo);
+      saveMovimiento(movNuevo);
+    }
+  } else {
+    if(qty>0) historial.push({ts:now(),tipo:'Carga manual',planta,ref,item:name,qty,operador:currentOperador||'',detalle:'Artículo nuevo creado'});
+    setTimeout(()=>{
+      saveInventarioItem(ref);
+      console.log('Artículo guardado (retry):', ref);
+    }, 2000);
+  }
+  // Reset fields
   // Reset fields
   document.getElementById('cm-new-ref').value='';
   document.getElementById('cm-new-name').value='';
