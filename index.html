@@ -793,8 +793,15 @@ function confirmarCargaManual(){
   inventory[selectedCMItem].stock[planta]=qty;
   const movCarga={ts:now(),tipo:'Carga manual',planta,ref:selectedCMItem,item:inventory[selectedCMItem].name,qty,operador,detalle:'Stock manual: '+qty+' u.'+(obs?' · '+obs:'')};
   historial.push(movCarga);
-  saveInventarioItem(selectedCMItem);
-  saveMovimiento(movCarga);
+  if(syncEnabled&&supabase_client){
+    saveInventarioItem(selectedCMItem);
+    saveMovimiento(movCarga);
+  } else {
+    setTimeout(()=>{
+      saveInventarioItem(selectedCMItem);
+      saveMovimiento(movCarga);
+    }, 2000);
+  }
   updateMetrics();
   filterStock(document.getElementById('stock-search').value);
   renderHistorial();
@@ -954,7 +961,8 @@ function confirmarRevisionNuevos(){
       // Initialize in inventory if not exists
       if(!inventory[refVincular]){
         inventory[refVincular]={name:catItem?catItem.name:it.name,cat:catItem?catItem.cat:'REP',equipo:'',min:1,precioARS:0,precioUSD:0,stock:Object.fromEntries(PLANTAS.map(p=>[p,0]))};
-        saveInventarioItem(refVincular);
+        if(syncEnabled&&supabase_client){saveInventarioItem(refVincular);}
+        else{setTimeout(()=>saveInventarioItem(refVincular),2000);}
       }
       // Remove auto-created item from catalog
       const idx=catalog.findIndex(c=>c.ref===it.ref);
@@ -987,8 +995,12 @@ function confirmarRevisionNuevos(){
       if(!inventory[newRef]){
         inventory[newRef]={name:it.name,cat,equipo:'',min:1,precioARS:0,precioUSD:0,stock:Object.fromEntries(PLANTAS.map(p=>[p,0]))};
       }
-      // Save new item to Supabase
-      saveInventarioItem(newRef);
+      // Save new item to Supabase (with retry if not connected yet)
+      if(syncEnabled&&supabase_client){
+        saveInventarioItem(newRef);
+      } else {
+        setTimeout(()=>saveInventarioItem(newRef), 2000);
+      }
       // Update OC items ref
       nuevas.forEach(oc=>{
         oc.items.forEach(ocIt=>{if(ocIt.ref===oldRef){ocIt.ref=newRef;ocIt.cat=cat;}});
@@ -1255,11 +1267,13 @@ async function loadFromSupabase(){
 }
 
 async function saveInventarioItem(ref){
-  if(!syncEnabled||!supabase_client) return;
+  if(!syncEnabled||!supabase_client){console.warn('saveInventarioItem: Supabase no conectado, ref='+ref);return;}
   const it=inventory[ref];
-  if(!it) return;
+  if(!it){console.warn('saveInventarioItem: item no encontrado, ref='+ref);return;}
   try{
-    await supabase_client.from('inventario').upsert({ref,name:it.name,cat:it.cat,equipo:it.equipo||'',min:it.min||1,precio_ars:it.precioARS||0,precio_usd:it.precioUSD||0,stock:it.stock},{onConflict:'ref'});
+    const {error}=await supabase_client.from('inventario').upsert({ref,name:it.name,cat:it.cat,equipo:it.equipo||'',min:it.min||1,precio_ars:it.precioARS||0,precio_usd:it.precioUSD||0,stock:it.stock},{onConflict:'ref'});
+    if(error) console.error('saveInventarioItem error:',error);
+    else console.log('Guardado OK:',ref);
   }catch(e){console.error('Error guardando inventario:',e);}
 }
 
@@ -1391,8 +1405,12 @@ function confirmarModalStock(ref){
 
   const mov={ts:now(),tipo:'Carga manual',planta,ref,item:inventory[ref].name,qty,operador,detalle:'Stock +'+qty+' u.'+(obs?' · '+obs:'')};
   historial.push(mov);
-  saveInventarioItem(ref);
-  saveMovimiento(mov);
+  if(syncEnabled&&supabase_client){
+    saveInventarioItem(ref);
+    saveMovimiento(mov);
+  } else {
+    setTimeout(()=>{saveInventarioItem(ref);saveMovimiento(mov);},2000);
+  }
 
   document.getElementById('stock-modal').remove();
   updateMetrics();
