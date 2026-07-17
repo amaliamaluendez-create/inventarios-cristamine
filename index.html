@@ -112,7 +112,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 </div>
 
 <div class="wrap" id="app-wrap" style="display:none">
-<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v1.9</span></h1>
+<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v2.0</span></h1>
 <div class="metrics">
   <div class="metric"><div class="metric-label">Con stock</div><div class="metric-value" id="m-items">0</div></div>
   <div class="metric"><div class="metric-label">OC pendientes</div><div class="metric-value info" id="m-oc">0</div></div>
@@ -1356,7 +1356,7 @@ function abrirModalStock(ref){
   modal.id='stock-modal';
   modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem';
 
-  const plantaOpts=PLANTAS.map(p=>`<option value="${p}" ${p===oc.dest?'selected':''}>${p}</option>`).join('');
+  const plantaOpts=PLANTAS.map(p=>`<option value="${p}" ${p===activePlanta&&activePlanta!=='Todas'?'selected':''}>${p}</option>`).join('');
   const stockActual=PLANTAS.map(p=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:0.5px solid var(--border)"><span style="color:var(--text2)">${p}</span><strong>${it.stock[p]||0}</strong></div>`).join('');
 
   modal.innerHTML=`<div style="background:var(--bg);border-radius:var(--rl);padding:1.25rem;width:100%;max-width:380px;max-height:90vh;overflow-y:auto">
@@ -1375,8 +1375,8 @@ function abrirModalStock(ref){
       </select>
     </div>
     <div class="field">
-      <label>Cantidad a sumar</label>
-      <input type="number" id="sm-qty" min="0" value="1" style="font-size:18px;text-align:center">
+      <label>Cantidad (negativo para restar)</label>
+      <input type="text" inputmode="numeric" id="sm-qty" value="1" placeholder="Ej: 5 o -3" style="font-size:18px;text-align:center">
     </div>
     <div class="field">
       <label>Operador</label>
@@ -1389,9 +1389,10 @@ function abrirModalStock(ref){
       <input type="text" id="sm-obs" placeholder="Ej: Stock inicial relevado">
     </div>
     <div style="display:flex;gap:8px;margin-top:1rem">
-      <button onclick="confirmarModalStock('${ref}')" style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:var(--r);padding:12px;font-size:14px;font-weight:600;cursor:pointer">+ Sumar stock</button>
-      <button onclick="document.getElementById('stock-modal').remove()" style="flex:1;background:none;border:0.5px solid var(--border2);border-radius:var(--r);padding:12px;font-size:14px;cursor:pointer">Cancelar</button>
+      <button onclick="confirmarModalStock('${ref}')" style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:var(--r);padding:12px;font-size:14px;font-weight:600;cursor:pointer">Confirmar</button>
+      <button onclick="document.getElementById('stock-modal').remove()" style="background:none;border:0.5px solid var(--border2);border-radius:var(--r);padding:12px;font-size:14px;cursor:pointer">Cancelar</button>
     </div>
+    <button onclick="eliminarArticulo('${ref}')" style="width:100%;margin-top:8px;background:none;border:0.5px solid var(--danger-text);color:var(--danger-text);border-radius:var(--r);padding:10px;font-size:13px;cursor:pointer">&#128465; Eliminar artículo del catálogo</button>
   </div>`;
 
   document.body.appendChild(modal);
@@ -1409,18 +1410,34 @@ function abrirModalStock(ref){
   }
 }
 
+function eliminarArticulo(ref){
+  const it=inventory[ref];
+  if(!confirm('\u00bfEliminar "'+( it?it.name:ref)+'" del cat\u00e1logo?\nSe eliminar\u00e1 del inventario y de Supabase.')) return;
+  catalog.splice(catalog.findIndex(c=>c.ref===ref),1);
+  delete inventory[ref];
+  if(syncEnabled&&supabase_client){
+    supabase_client.from('inventario').delete().eq('ref',ref).then(({error})=>{
+      if(error) console.error('Error eliminando:',error);
+      else console.log('Eliminado:',ref);
+    });
+  }
+  document.getElementById('stock-modal')?.remove();
+  updateMetrics();
+  filterStock(document.getElementById('stock-search')?.value||'');
+}
+
 function confirmarModalStock(ref){
   const planta=document.getElementById('sm-planta')?.value;
-  const qty=parseInt(document.getElementById('sm-qty')?.value)||0;
+  const qty=parseInt(document.getElementById('sm-qty')?.value.replace(',','.'))||0;
   const operador=document.getElementById('sm-op')?.value||'';
   const obs=document.getElementById('sm-obs')?.value.trim()||'';
   if(!planta){alert('Seleccioná la planta.');return;}
-  if(qty<=0){alert('Ingresá una cantidad mayor a 0.');return;}
+  if(qty===0){alert('Ingresá una cantidad distinta de 0.');return;}
   if(!operador){alert('¿Quién está haciendo la carga?');return;}
 
   if(!inventory[ref]) return;
   PLANTAS.forEach(p=>{if(inventory[ref].stock[p]===undefined) inventory[ref].stock[p]=0;});
-  inventory[ref].stock[planta]=(inventory[ref].stock[planta]||0)+qty;
+  inventory[ref].stock[planta]=Math.max(0,(inventory[ref].stock[planta]||0)+qty);
 
   const mov={ts:now(),tipo:'Carga manual',planta,ref,item:inventory[ref].name,qty,operador,detalle:'Stock +'+qty+' u.'+(obs?' · '+obs:'')};
   historial.push(mov);
