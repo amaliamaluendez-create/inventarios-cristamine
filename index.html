@@ -112,7 +112,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 </div>
 
 <div class="wrap" id="app-wrap" style="display:none">
-<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v2.0</span></h1>
+<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v2.2</span></h1>
 <div class="metrics">
   <div class="metric"><div class="metric-label">Con stock</div><div class="metric-value" id="m-items">0</div></div>
   <div class="metric"><div class="metric-label">OC pendientes</div><div class="metric-value info" id="m-oc">0</div></div>
@@ -651,6 +651,12 @@ function editOCDest(id,dest){
   const oc=ocList.find(o=>Number(o.id)===Number(id));
   if(oc){
     oc.dest=dest;
+    // Persistir el cambio en Supabase
+    if(syncEnabled&&supabase_client){
+      saveOC(oc);
+    } else {
+      setTimeout(()=>saveOC(oc),2000);
+    }
     renderOCPendientes();
     renderOCPendientesEnviar();
   }
@@ -658,7 +664,15 @@ function editOCDest(id,dest){
 
 function editOCGeneraStock(id,val){
   const oc=ocList.find(o=>Number(o.id)===Number(id));
-  if(oc) oc.generaStock=val==='true';
+  if(oc){
+    oc.generaStock=val==='true';
+    // Persistir el cambio en Supabase
+    if(syncEnabled&&supabase_client){
+      saveOC(oc);
+    } else {
+      setTimeout(()=>saveOC(oc),2000);
+    }
+  }
 }
 
 function populateOperadores(selectId, planta){
@@ -1499,6 +1513,16 @@ function deshacerMovimiento(idx){
     // Si es recepción de OC, volver la OC a pendiente
     if(mov.tipo==='Entrada'||mov.tipo==='Entrada parcial'){
       const ocNum=mov.ref.replace('OC ','').replace(' (parcial)','').trim();
+      // Eliminar de pendientes de enviar
+      const envIdx=ocPendientesEnviar.findIndex(o=>o.ocNum===ocNum);
+      if(envIdx>-1){
+        const envOC=ocPendientesEnviar[envIdx];
+        ocPendientesEnviar.splice(envIdx,1);
+        // Eliminar de Supabase si tiene id
+        if(syncEnabled&&supabase_client&&envOC.id){
+          supabase_client.from('oc').delete().eq('id',envOC.id);
+        }
+      }
       // Buscar en ocList primero
       let oc=ocList.find(o=>o.num===ocNum);
       if(oc){
@@ -1557,6 +1581,7 @@ function deshacerMovimiento(idx){
   updateMetrics();
   filterStock(document.getElementById('stock-search')?.value||'');
   renderOCPendientes();
+  renderOCPendientesEnviar();
   renderHistorial();
 }
 
@@ -2059,9 +2084,11 @@ function renderEnViaje(){
     <div class="item-meta" style="margin-bottom:8px">
       ${tp.usoDirecto?'<span class="badge b-gray">Uso directo</span>':'<span class="badge b-ok">Genera stock</span>'}
       Desde: <strong>${esc(tp.desde)}</strong> &middot; &times;${tp.qty}
-      ${tp.quien?' &middot; Lleva: '+esc(tp.quien):''}
       ${tp.origen?' &middot; '+esc(tp.origen):''}
-      <div style="font-size:10px;margin-top:2px">${tp.ts}</div>
+      <div style="font-size:11px;margin-top:4px;padding:4px 6px;background:var(--info-bg,#E3F2FD);border-radius:4px;display:inline-block">
+        🚛 ${tp.quien?esc(tp.quien):'Sin especificar'}${tp.patente?' &middot; Patente: <strong>'+esc(tp.patente)+'</strong>':''}${tp.remito?' &middot; Remito: <strong>'+esc(tp.remito)+'</strong>':''}
+      </div>
+      <div style="font-size:10px;margin-top:4px;color:var(--text2)">${tp.ts}</div>
     </div>
     <button class="btn" onclick="confirmarRecepcionTransfer(${tp.id})">&#10003; Lo recibí</button>
   </div>`).join('');
@@ -2097,9 +2124,10 @@ function renderOCPendientesEnviar(){
 function despacharOC(id){
   const oc=ocPendientesEnviar.find(o=>Number(o.id)===Number(id));
   if(!oc) return;
-  const quien=prompt('OC '+oc.ocNum+' → '+oc.hacia+'\n\n¿Quién lo lleva? (nombre del chofer o transportista)');
-  if(quien===null) return;
+  const transporte=prompt('OC '+oc.ocNum+' → '+oc.hacia+'\n\n¿En qué transporte va? (podés escribir nombre, patente, empresa, lo que quieras)');
+  if(transporte===null) return;
   oc.status='despachada';
+  oc.transporte={quien:transporte.trim()||'Sin especificar', patente:'', remito:''};
   const totalQty=oc.items.reduce((a,b)=>a+b.qty,0);
   const tsDespacho=now();
   // Crear transferencia pendiente de recepción en destino
@@ -2112,7 +2140,9 @@ function despacharOC(id){
       qty:it.qty,
       desde:oc.desde,
       hacia:oc.hacia,
-      quien:quien.trim()||'Sin especificar',
+      quien:quien,
+      patente:patente,
+      remito:remito,
       ts:tsDespacho,
       status:'pendiente',
       origen:'OC '+oc.ocNum,
