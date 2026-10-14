@@ -112,7 +112,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 </div>
 
 <div class="wrap" id="app-wrap" style="display:none">
-<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v2.2</span></h1>
+<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v2.3</span></h1>
 <div class="metrics">
   <div class="metric"><div class="metric-label">Con stock</div><div class="metric-value" id="m-items">0</div></div>
   <div class="metric"><div class="metric-label">OC pendientes</div><div class="metric-value info" id="m-oc">0</div></div>
@@ -199,7 +199,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 
   <!-- Pedidos pendientes -->
   <div class="card">
-    <div class="card-title">&#128203; Pedidos pendientes de OC</div>
+    <div class="card-title">&#128203; Seguimiento de pedidos</div>
     <div id="pedidos-pendientes-list"><div class="empty">Sin pedidos pendientes.</div></div>
   </div>
 </div>
@@ -659,6 +659,7 @@ function editOCDest(id,dest){
     }
     renderOCPendientes();
     renderOCPendientesEnviar();
+  if(typeof renderPedidosPendientes==='function') renderPedidosPendientes();
   }
 }
 
@@ -1043,6 +1044,7 @@ function confirmarRevisionNuevos(){
   nuevas.forEach(oc=>{ocList.push(oc);saveOC(oc);});
   renderOCPendientes();
   renderOCPendientesEnviar();
+  if(typeof renderPedidosPendientes==='function') renderPedidosPendientes();
   updateMetrics();
 
   const totalNuevas=nuevas.reduce((a,b)=>a+b.items.length,0);
@@ -1130,49 +1132,243 @@ function registrarPedido(){
   savePedido(lastPed);
   renderPedidosPendientes();
   updateMetrics();
+  chequearStockPedido(lastPed);
+}
+
+// Al enviar el pedido avisa si hay stock y ofrece resolverlo en el momento
+function chequearStockPedido(p){
+  // Si el pedido no tiene ref (se escribió a mano), buscar el artículo por nombre
+  if(!p.ref||!inventory[p.ref]){
+    const q=String(p.name||'').trim().toLowerCase();
+    if(q.length>2){
+      let hit=Object.keys(inventory).find(k=>String(inventory[k].name||'').trim().toLowerCase()===q);
+      if(!hit) hit=Object.keys(inventory).find(k=>String(inventory[k].name||'').toLowerCase().includes(q));
+      if(!hit){
+        const pal=q.split(/\s+/).filter(w=>w.length>3);
+        if(pal.length) hit=Object.keys(inventory).find(k=>{
+          const n=String(inventory[k].name||'').toLowerCase();
+          return pal.every(w=>n.includes(w));
+        });
+      }
+      if(hit){ p.ref=hit; p.name=inventory[hit].name; }
+    }
+  }
+  const it=p.ref?inventory[p.ref]:null;
+  const propio=it?(it.stock[p.planta]||0):0;
+  const otras=it?PLANTAS.filter(pl=>pl!==p.planta&&(it.stock[pl]||0)>0)
+    .map(pl=>({pl,q:it.stock[pl]||0})).sort((a,b)=>b.q-a.q):[];
+  let titulo,color,cuerpo,acciones;
+  if(propio>=p.qty){
+    titulo='&#10003; Lo tenés en tu planta'; color='var(--ok-text,#1B5E20)';
+    cuerpo='Hay <strong>'+propio+' u.</strong> de "'+esc(p.name)+'" en '+esc(p.planta)+'. No hace falta pedirlo: retiralo del dep\u00f3sito y registr\u00e1 la salida.'+
+      (otras.length?'<div style="font-size:11px;color:var(--text2);margin-top:6px">Tambi\u00e9n hay en: '+otras.map(x=>esc(x.pl)+' ('+x.q+')').join(' \u00b7 ')+'</div>':'');
+    acciones='<button onclick="resolverDesdeAviso('+p.id+',\'salida\')" style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:var(--r);padding:11px;font-size:13px;font-weight:600;cursor:pointer">Registrar salida y cerrar pedido</button>';
+  } else if(otras.length){
+    const o=otras[0];
+    titulo='&#128666; Hay stock en otra planta'; color='var(--info-text,#1565C0)';
+    cuerpo='No hay en '+esc(p.planta)+(propio?' (solo '+propio+' u.)':'')+', pero hay <strong>'+o.q+' u.</strong> en <strong>'+esc(o.pl)+'</strong>'+
+      (otras.length>1?'<div style="font-size:11px;color:var(--text2);margin-top:4px">Tambi\u00e9n: '+otras.slice(1).map(x=>esc(x.pl)+' ('+x.q+')').join(' · ')+'</div>':'');
+    cuerpo+='<div style="font-size:11px;color:var(--text2);margin-top:8px">Va a quedar como pendiente de enviar en '+esc(o.pl)+'. La transferencia se genera al despacharlo.</div>';
+    acciones='<button onclick="encolarEnvioPedido('+p.id+')" style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:var(--r);padding:11px;font-size:13px;font-weight:600;cursor:pointer">Pasar a pendiente de enviar</button>';
+  } else {
+    titulo='&#128230; Sin stock en ninguna planta'; color='var(--warn-text)';
+    cuerpo=(it?'No hay stock de "'+esc(p.name)+'" en ninguna planta.':'El art\u00edculo "'+esc(p.name)+'" no figura en el inventario.')+' El pedido queda pendiente para que Compras genere la OC.';
+    acciones='<button onclick="resolverDesdeAviso('+p.id+',\'oc\')" style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:var(--r);padding:11px;font-size:13px;font-weight:600;cursor:pointer">Entendido</button>';
+  }
+  const m=document.createElement('div');
+  m.id='aviso-pedido';
+  m.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem';
+  m.innerHTML='<div style="background:var(--bg);border-radius:var(--rl);padding:1.25rem;width:100%;max-width:420px">'+
+    '<div style="font-size:15px;font-weight:700;color:'+color+';margin-bottom:8px">'+titulo+'</div>'+
+    '<div style="font-size:13px;line-height:1.45;margin-bottom:14px">'+cuerpo+'</div>'+
+    '<div style="display:flex;gap:8px">'+acciones+
+    '<button onclick="document.getElementById(\'aviso-pedido\').remove()" style="background:none;border:0.5px solid var(--border2);border-radius:var(--r);padding:11px 14px;font-size:13px;cursor:pointer">Despu\u00e9s</button>'+
+    '</div></div>';
+  document.body.appendChild(m);
+}
+
+function encolarEnvioPedido(id){
+  document.getElementById('aviso-pedido')?.remove();
+  const p=pedidos.find(x=>Number(x.id)===Number(id));
+  if(!p) return;
+  const it=inventory[p.ref];
+  if(!it){alert('El artículo no está en el inventario.');return;}
+  const otras=PLANTAS.filter(pl=>pl!==p.planta&&(it.stock[pl]||0)>0)
+    .map(pl=>({pl,q:it.stock[pl]||0})).sort((a,b)=>b.q-a.q);
+  if(!otras.length){alert('Ya no hay stock en otras plantas.');return;}
+  let desde=otras[0].pl;
+  if(otras.length>1){
+    const r=prompt('\u00bfDesde qu\u00e9 planta se env\u00eda?\n\n'+otras.map(x=>'\u00b7 '+x.pl+' ('+x.q+' u.)').join('\n'),desde);
+    if(r===null) return;
+    desde=(r||'').trim();
+  }
+  if(!PLANTAS.includes(desde)){alert('Planta no v\u00e1lida.');return;}
+  if((it.stock[desde]||0)<p.qty){alert('Stock insuficiente en '+desde+'. Disponible: '+(it.stock[desde]||0));return;}
+  p.status='pendiente_envio';
+  p.plantaOrigen=desde;
+  p.resolucion='Pendiente de enviar desde '+desde;
+  p.tsCierre=now();
+  updatePedidoStatus(p.id,'pendiente_envio',null,p.resolucion,desde);
+  renderPedidosPendientes();
+  if(typeof renderOCPendientesEnviar==='function') renderOCPendientesEnviar();
+  updateMetrics();
+  alert('Listo. Qued\u00f3 pendiente de enviar en '+desde+'.\n\nCuando lo despachen desde la pesta\u00f1a OC, '+p.planta+' lo va a ver como pendiente de recibir.');
+}
+
+// Despacha un pedido desde la cola de Pendientes de enviar
+function despacharPedido(id){
+  const p=pedidos.find(x=>Number(x.id)===Number(id));
+  if(!p) return;
+  const desde=p.plantaOrigen;
+  const it=inventory[p.ref];
+  if(!it||!desde){alert('Faltan datos del pedido.');return;}
+  if((it.stock[desde]||0)<p.qty){alert('Stock insuficiente en '+desde+'. Disponible: '+(it.stock[desde]||0));return;}
+  const transporte=prompt('Pedido #'+p.id+' \u2192 '+p.planta+'\n\n\u00bfEn qu\u00e9 transporte va?');
+  if(transporte===null) return;
+  const quien=currentOperador||'';
+  it.stock[desde]-=p.qty;
+  const tp={id:nextId(),ref:p.ref,name:it.name,cat:it.cat||'',qty:p.qty,desde,hacia:p.planta,
+    quien:(transporte||'').trim()||'Sin especificar',ts:now(),status:'pendiente',origen:'Pedido #'+p.id};
+  transfersPendientes.push(tp);
+  const mov={ts:now(),tipo:'Envío',planta:desde+' \u2192 '+p.planta,ref:p.ref,item:it.name,qty:p.qty,
+    operador:quien,detalle:desde+' \u2192 '+p.planta+' \u00b7 Pedido #'+p.id+((transporte||'').trim()?' \u00b7 Lleva: '+transporte.trim():'')};
+  historial.push(mov);
+  saveInventarioItem(p.ref); saveTransferencia(tp); saveMovimiento(mov);
+  p.status='en_viaje';
+  p.resolucion='En viaje hacia '+p.planta+' desde '+desde;
+  updatePedidoStatus(p.id,'en_viaje',null,p.resolucion,desde);
+  renderPedidosPendientes();
+  if(typeof renderOCPendientesEnviar==='function') renderOCPendientesEnviar();
+  if(typeof renderEnViaje==='function') renderEnViaje();
+  if(typeof renderTransfersPendientes==='function') renderTransfersPendientes();
+  updateMetrics();
+  filterStock(document.getElementById('stock-search')?.value||'');
+  renderHistorial();
+}
+
+function resolverDesdeAviso(id,accion){
+  document.getElementById('aviso-pedido')?.remove();
+  const p=pedidos.find(x=>Number(x.id)===Number(id));
+  if(!p) return;
+  if(accion==='oc'){ showToast('msg-pedido'); return; }
+  const it=inventory[p.ref];
+  if(!it) return;
+  if(accion==='salida'){
+    if((it.stock[p.planta]||0)<p.qty){alert('Ya no hay stock suficiente en '+p.planta+'.');return;}
+    it.stock[p.planta]-=p.qty;
+    const mov={ts:now(),tipo:'Salida',planta:p.planta,ref:p.ref,item:it.name,qty:p.qty,
+      operador:currentOperador||p.operador||'',detalle:(p.motivo||'Pedido interno')+' · Pedido #'+p.id};
+    historial.push(mov);
+    saveInventarioItem(p.ref); saveMovimiento(mov);
+    p.status='stock'; p.resolucion='Entregado de stock de '+p.planta; p.tsCierre=now();
+    updatePedidoStatus(p.id,'stock',null,p.resolucion);
+  }
+  renderPedidosPendientes(); updateMetrics();
+  filterStock(document.getElementById('stock-search')?.value||'');
+  renderHistorial();
   showToast('msg-pedido');
 }
+
+function textoEstado(p){
+  const s=p.status||'';
+  if(s==='oc_generada') return p.ocNum?('OC '+p.ocNum):'OC generada';
+  if(s==='stock') return 'Entregado de stock de '+(p.planta||'');
+  if(s==='transfer') return 'Transferido';
+  if(s==='pendiente_envio') return 'Pendiente de enviar'+(p.plantaOrigen?' desde '+p.plantaOrigen:'');
+  if(s==='en_viaje') return 'En viaje';
+  if(s==='entregado') return 'Entregado';
+  if(s==='rechazado') return 'Rechazado';
+  if(s==='entregado_local') return 'Entregado de stock de '+(p.planta||'');
+  return s||'Resuelto';
+}
+
+let filtroPedidos='curso';
+function setFiltroPedidos(f){filtroPedidos=f;renderPedidosPendientes();}
 
 function renderPedidosPendientes(){
   const el=document.getElementById('pedidos-pendientes-list');
   if(!el) return;
-  const pend=pedidos.filter(p=>p.status==='pendiente').sort((a,b)=>{
-    if(a.urgencia==='urgente'&&b.urgencia!=='urgente') return -1;
-    if(b.urgencia==='urgente'&&a.urgencia!=='urgente') return 1;
-    return 0;
-  });
-  if(!pend.length){el.innerHTML='<div class="empty">Sin pedidos pendientes.</div>';return;}
-  el.innerHTML=pend.map(p=>`<div class="item-card" style="${p.urgencia==='urgente'?'border-color:var(--danger-text)':''}">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-      <div style="flex:1;min-width:0;margin-right:8px">
-        <div style="font-size:13px;font-weight:500">${esc(p.name)}
-          ${p.urgencia==='urgente'?'<span class="badge b-danger">&#128680; Urgente</span>':''}
+  const abierto=p=>!p.status||p.status==='pendiente'||p.status==='pendiente_envio'||p.status==='en_viaje';
+  const lista=pedidos.filter(p=>filtroPedidos==='curso'?abierto(p):!abierto(p))
+    .sort((a,b)=>(a.urgencia==='urgente'?-1:0)-(b.urgencia==='urgente'?-1:0));
+  const nC=pedidos.filter(abierto).length, nR=pedidos.length-nC;
+  const chip=(f,t,n)=>`<button onclick="setFiltroPedidos('${f}')" style="background:${filtroPedidos===f?'var(--primary)':'none'};color:${filtroPedidos===f?'#fff':'var(--text2)'};border:0.5px solid ${filtroPedidos===f?'var(--primary)':'var(--border2)'};border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer;margin-right:6px">${t} (${n})</button>`;
+  let html=`<div style="margin-bottom:10px">${chip('curso','En curso',nC)}${chip('cerrados','Resueltos',nR)}</div>`;
+  if(!lista.length){el.innerHTML=html+'<div class="empty">Sin pedidos.</div>';return;}
+  html+=lista.map(p=>{
+    const urg=p.urgencia==='urgente'&&abierto(p);
+    const cab=`<div style="font-size:13px;font-weight:500">${esc(p.name)}${urg?' <span class="badge b-danger">&#128680; Urgente</span>':''}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">${esc(p.planta)} &middot; ${esc(p.operador)} &middot; &times;${p.qty} &middot; ${esc(p.ts)}</div>
+      ${p.motivo?`<div style="font-size:11px;color:var(--text2)">${esc(p.motivo)}</div>`:''}`;
+    if(abierto(p)){
+      const esperando=p.status==='pendiente_envio'||p.status==='en_viaje';
+      return `<div class="item-card" style="${urg?'border-color:var(--danger-text)':''}">
+        ${cab}
+        ${esperando?`<div style="background:var(--info-bg,#E3F2FD);border-radius:var(--r);padding:7px 10px;margin-top:8px">
+          <div style="font-size:12px;font-weight:600;color:var(--info-text,#1565C0)">&#128666; ${esc(p.resolucion||'Pendiente de enviar')}</div>
+        </div>`:''}
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <select id="res-${p.id}" style="flex:1;font-size:12px;padding:8px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg)">
+            <option value="">${esperando?'-- Cerrar pedido --':'-- ¿Cómo se resolvió? --'}</option>
+            <option value="oc">Se generó una OC</option>
+            <option value="stock">Se entregó de stock</option>
+            <option value="transfer">Se transfiere de otra planta</option>
+            <option value="rechazado">No se compra / rechazado</option>
+          </select>
+          <button onclick="resolverPedido(${p.id})" style="background:var(--text);color:var(--bg);border:none;border-radius:var(--r);padding:8px 14px;font-size:12px;font-weight:500;cursor:pointer">Guardar</button>
         </div>
-        <div style="font-size:11px;color:var(--text2);margin-top:2px">
-          ${esc(p.planta)} &middot; ${esc(p.operador)} &middot; &times;${p.qty} &middot; ${p.ts}
-        </div>
-        ${p.motivo?`<div style="font-size:11px;color:var(--text2)">${esc(p.motivo)}</div>`:''}
+      </div>`;
+    }
+    return `<div class="item-card" style="opacity:.85">
+      ${cab}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:7px;border-top:0.5px solid var(--border)">
+        <span style="font-size:12px;color:var(--text2)">&#10003; ${esc(p.resolucion||textoEstado(p))}</span>
+        <button onclick="reabrirPedido(${p.id})" style="background:none;border:none;color:var(--text2);font-size:11px;cursor:pointer;text-decoration:underline">Reabrir</button>
       </div>
-    </div>
-    <div style="display:flex;gap:6px">
-      <input type="text" id="oc-num-ped-${p.id}" placeholder="Nº OC generada" style="flex:1;font-size:13px;padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--r)">
-      <button onclick="cerrarPedido(${p.id})" style="background:var(--text);color:var(--bg);border:none;border-radius:var(--r);padding:8px 12px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap">OC generada</button>
-    </div>
-  </div>`).join('');
+    </div>`;}).join('');
+  el.innerHTML=html;
 }
 
-function cerrarPedido(id){
+function resolverPedido(id){
   const p=pedidos.find(x=>Number(x.id)===Number(id));
   if(!p) return;
-  const ocNum=document.getElementById('oc-num-ped-'+id)?.value.trim();
-  if(!ocNum){alert('Ingresá el número de OC generada.');return;}
-  p.status='oc_generada';
-  p.ocNum=ocNum;
+  const v=document.getElementById('res-'+id)?.value;
+  if(!v){alert('Elegí cómo se resolvió el pedido.');return;}
+  let res='',ocNum=null;
+  if(v==='oc'){
+    const n=prompt('Número de OC:');
+    if(n===null) return;
+    ocNum=(n||'').trim();
+    if(!ocNum){alert('Ingresá el número de OC.');return;}
+    res='OC '+ocNum;
+  } else if(v==='stock'){
+    res='Entregado de stock de '+p.planta;
+  } else if(v==='transfer'){
+    const d=prompt('¿Desde qué planta se transfiere?','Berazategui');
+    if(d===null) return;
+    res='Se transfiere desde '+((d||'').trim()||'otra planta');
+  } else {
+    const m=prompt('¿Por qué no se compra?');
+    if(m===null) return;
+    res='Rechazado — '+((m||'').trim()||'sin motivo');
+  }
+  p.status=v==='oc'?'oc_generada':v;
+  p.ocNum=ocNum||'';
+  p.resolucion=res;
   p.tsCierre=now();
-  updatePedidoStatus(p.id,'oc_generada',ocNum);
-  renderPedidosPendientes();
-  updateMetrics();
+  updatePedidoStatus(p.id,p.status,ocNum,res);
+  renderPedidosPendientes(); updateMetrics();
 }
+
+function reabrirPedido(id){
+  const p=pedidos.find(x=>Number(x.id)===Number(id));
+  if(!p) return;
+  p.status='pendiente'; p.ocNum=''; p.resolucion='';
+  updatePedidoStatus(p.id,'pendiente',null,null);
+  renderPedidosPendientes(); updateMetrics();
+}
+
+function cerrarPedido(id){ resolverPedido(id); }
 
 function renderConfigOperadores(){
   const planta=document.getElementById('cfg-planta')?.value;
@@ -1273,15 +1469,22 @@ async function loadFromSupabase(){
     if(ocs&&ocs.length>0){
       ocList=ocs.map(o=>({id:o.id,num:o.num,prov:o.prov,prov_cod:o.prov_cod||'',fecha:o.fecha||'',dest:o.dest||'Berazategui',items:o.items||[],status:o.status,generaStock:o.genera_stock!==false,created:o.created_at}));
     }
+    // Load envíos pendientes de despachar
+    const {data:envs}=await supabase_client.from('envios_pendientes').select('*').eq('status','pendiente');
+    if(envs&&envs.length>0){
+      ocPendientesEnviar=envs.map(e=>({dbId:e.id,id:e.id,ocNum:e.oc_num||'',items:e.items||[],
+        desde:e.desde,hacia:e.hacia,ts:e.ts||'',status:e.status,
+        generaStock:e.genera_stock!==false,usoDirecto:!!e.uso_directo,origen:e.origen||''}));
+    }
     // Load transferencias
     const {data:trs}=await supabase_client.from('transferencias').select('*').eq('status','pendiente');
     if(trs&&trs.length>0){
       transfersPendientes=trs.map(t=>({id:t.id,ref:t.ref,name:t.name,cat:t.cat||'',qty:t.qty,desde:t.desde,hacia:t.hacia,quien:t.quien||'',ts:t.ts||'',status:t.status,usoDirecto:t.uso_directo,origen:t.origen||''}));
     }
     // Load pedidos
-    const {data:peds}=await supabase_client.from('pedidos').select('*').eq('status','pendiente');
+    const {data:peds}=await supabase_client.from('pedidos').select('*').order('id',{ascending:false}).limit(300);
     if(peds&&peds.length>0){
-      pedidos=peds.map(p=>({id:p.id,ref:p.ref,name:p.name,cat:p.cat||'',planta:p.planta,operador:p.operador,qty:p.qty,motivo:p.motivo||'',urgencia:p.urgencia||'normal',ts:p.ts||'',status:p.status}));
+      pedidos=peds.map(p=>({id:p.id,ref:p.ref,name:p.name,cat:p.cat||'',planta:p.planta,operador:p.operador,qty:p.qty,motivo:p.motivo||'',urgencia:p.urgencia||'normal',ts:p.ts||'',status:p.status,ocNum:p.oc_num||'',resolucion:p.resolucion||'',plantaOrigen:p.planta_origen||''}));
     }
     // Load historial (last 200)
     const {data:hist}=await supabase_client.from('movimientos').select('*').order('created_at',{ascending:false}).limit(200);
@@ -1333,6 +1536,27 @@ async function saveMovimiento(mov){
   }catch(e){console.error('Error guardando movimiento:',e);}
 }
 
+async function saveEnvioPendiente(e){
+  if(!syncEnabled||!supabase_client) return;
+  try{
+    const {data,error}=await supabase_client.from('envios_pendientes').insert({
+      oc_num:e.ocNum||'',items:e.items||[],desde:e.desde,hacia:e.hacia,ts:e.ts||'',
+      status:e.status||'pendiente',genera_stock:e.generaStock!==false,
+      uso_directo:!!e.usoDirecto,origen:e.origen||''
+    }).select();
+    if(error) console.error('saveEnvioPendiente error:',error);
+    if(data&&data[0]) e.dbId=data[0].id;
+  }catch(err){console.error('Error guardando envío pendiente:',err);}
+}
+
+async function deleteEnvioPendiente(e){
+  if(!syncEnabled||!supabase_client||!e) return;
+  try{
+    if(e.dbId) await supabase_client.from('envios_pendientes').delete().eq('id',e.dbId);
+    else await supabase_client.from('envios_pendientes').delete().eq('oc_num',e.ocNum).eq('desde',e.desde).eq('hacia',e.hacia);
+  }catch(err){console.error('Error borrando envío pendiente:',err);}
+}
+
 async function saveTransferencia(tp){
   if(!syncEnabled||!supabase_client) return;
   try{
@@ -1351,15 +1575,19 @@ async function updateTransferenciaStatus(id,status){
 async function savePedido(ped){
   if(!syncEnabled||!supabase_client) return;
   try{
-    const {data}=await supabase_client.from('pedidos').insert({ref:ped.ref,name:ped.name,cat:ped.cat||'',planta:ped.planta,operador:ped.operador,qty:ped.qty,motivo:ped.motivo||'',urgencia:ped.urgencia||'normal',ts:ped.ts,status:ped.status}).select();
+    const {data}=await supabase_client.from('pedidos').insert({ref:ped.ref,name:ped.name,cat:ped.cat||'',planta:ped.planta,operador:ped.operador,qty:ped.qty,motivo:ped.motivo||'',urgencia:ped.urgencia||'normal',ts:ped.ts,status:ped.status,oc_num:ped.ocNum||null,resolucion:ped.resolucion||null}).select();
     if(data&&data[0]) ped.id=data[0].id;
   }catch(e){console.error('Error guardando pedido:',e);}
 }
 
-async function updatePedidoStatus(id,status,ocNum){
+async function updatePedidoStatus(id,status,ocNum,resolucion,plantaOrigen){
   if(!syncEnabled||!supabase_client) return;
   try{
-    await supabase_client.from('pedidos').update({status,oc_num:ocNum||null}).eq('id',id);
+    const upd={status,oc_num:ocNum||null};
+    if(resolucion!==undefined) upd.resolucion=resolucion||null;
+    if(plantaOrigen!==undefined) upd.planta_origen=plantaOrigen||null;
+    const {error}=await supabase_client.from('pedidos').update(upd).eq('id',id);
+    if(error) console.error('updatePedidoStatus error:',error);
   }catch(e){console.error('Error actualizando pedido:',e);}
 }
 
@@ -2100,13 +2328,29 @@ function renderOCPendientesEnviar(){
   if(!el) return;
   // Solo mostrar si sos la planta que tiene que despachar
   const pend=ocPendientesEnviar.filter(o=>o.status==='pendiente'&&(activePlanta==='Todas'||o.desde===activePlanta));
-  if(!pend.length){
+  // Pedidos internos esperando despacho desde esta planta
+  const pedEnv=pedidos.filter(p=>p.status==='pendiente_envio'&&(activePlanta==='Todas'||p.plantaOrigen===activePlanta));
+  if(!pend.length&&!pedEnv.length){
     if(card) card.style.display='none';
     el.innerHTML='<div class="empty">Sin envíos pendientes.</div>';
     return;
   }
   if(card) card.style.display='block';
-  el.innerHTML=pend.map(oc=>`<div class="item-card" style="border-color:var(--info-text)">
+  const htmlPed=pedEnv.map(p=>`<div class="item-card" style="border-color:var(--info-text)">
+    <div style="margin-bottom:6px">
+      <div style="font-size:13px;font-weight:500">Pedido #${p.id}
+        <span class="badge b-pend">Por despachar</span>
+        <span class="badge b-gray">Pedido interno</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">
+        ${esc(p.plantaOrigen||'')} &rarr; ${esc(p.planta)} &middot; ${esc(p.ts)} &middot; pidi&oacute;: ${esc(p.operador)}
+      </div>
+      <div style="font-size:12px;margin-top:4px"><span class="badge b-gray">${esc(p.ref||'')}</span> ${esc(String(p.name).substring(0,32))} &times;${p.qty}</div>
+      ${p.motivo?`<div style="font-size:11px;color:var(--text2);margin-top:2px">${esc(p.motivo)}</div>`:''}
+    </div>
+    <button class="btn" onclick="despacharPedido(${p.id})">&#128666; Confirmar despacho</button>
+  </div>`).join('');
+  el.innerHTML=htmlPed+pend.map(oc=>`<div class="item-card" style="border-color:var(--info-text)">
     <div style="margin-bottom:6px">
       <div style="font-size:13px;font-weight:500">OC ${esc(oc.ocNum)}
         <span class="badge b-pend">Por despachar</span>
@@ -2127,6 +2371,7 @@ function despacharOC(id){
   const transporte=prompt('OC '+oc.ocNum+' → '+oc.hacia+'\n\n¿En qué transporte va? (podés escribir nombre, patente, empresa, lo que quieras)');
   if(transporte===null) return;
   oc.status='despachada';
+  deleteEnvioPendiente(oc);
   oc.transporte={quien:transporte.trim()||'Sin especificar', patente:'', remito:''};
   const totalQty=oc.items.reduce((a,b)=>a+b.qty,0);
   const tsDespacho=now();
@@ -2346,12 +2591,14 @@ function confirmarRecepcionModal(id){
       historial.push({ts:now(),tipo:tipoEntrada,planta,ref:'OC '+oc.num,item:'Recepción OC'+(esTotal?'':' (parcial)'),qty:totalRecibido,operador,detalle:(oc.prov||'')+' → '+planta+(totalPendiente>0?' · Falta: '+totalPendiente+' u.':'')});
       if(planta.trim()!==oc.dest.trim()){
         itemsRecibidos.forEach(it=>{inventory[it.ref].stock[planta]-=it.qty;});
-        ocPendientesEnviar.push({id:nextId(),ocNum:oc.num,items:itemsRecibidos,desde:planta,hacia:oc.dest,ts:now(),status:'pendiente',generaStock:true});
+        {const _e={id:nextId(),ocNum:oc.num,items:itemsRecibidos,desde:planta,hacia:oc.dest,ts:now(),status:'pendiente',generaStock:true,origen:'OC '+oc.num};
+        ocPendientesEnviar.push(_e); saveEnvioPendiente(_e);}
       }
     } else {
       historial.push({ts:now(),tipo:'Uso directo',planta,ref:'OC '+oc.num,item:'Recepción OC',qty:totalRecibido,operador,detalle:'Uso directo → '+planta+(totalPendiente>0?' · Falta: '+totalPendiente+' u.':'')});
       if(planta.trim()!==oc.dest.trim()){
-        ocPendientesEnviar.push({id:nextId(),ocNum:oc.num,items:itemsRecibidos,desde:planta,hacia:oc.dest,ts:now(),status:'pendiente',generaStock:false,usoDirecto:true});
+        {const _e={id:nextId(),ocNum:oc.num,items:itemsRecibidos,desde:planta,hacia:oc.dest,ts:now(),status:'pendiente',generaStock:false,usoDirecto:true,origen:'OC '+oc.num};
+        ocPendientesEnviar.push(_e); saveEnvioPendiente(_e);}
       }
     }
   }
@@ -2613,6 +2860,17 @@ function procesarRecepcionTransfer(id){
   filterStock(document.getElementById('stock-search')?.value||'');
   renderHistorial();
   renderTransfersPendientes();
+  // Si la transferencia vino de un pedido, cerrarlo
+  if(tp.origen&&String(tp.origen).startsWith('Pedido #')){
+    const pid=Number(String(tp.origen).replace('Pedido #','').trim());
+    const ped=pedidos.find(x=>Number(x.id)===pid);
+    if(ped){
+      ped.status='entregado';
+      ped.resolucion='Entregado en '+ped.planta+' desde '+tp.desde;
+      updatePedidoStatus(ped.id,'entregado',null,ped.resolucion,tp.desde);
+      if(typeof renderPedidosPendientes==='function') renderPedidosPendientes();
+    }
+  }
   renderStockPendientesAviso();
   renderEnViaje();
   renderOCPendientes();
