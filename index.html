@@ -112,7 +112,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 </div>
 
 <div class="wrap" id="app-wrap" style="display:none">
-<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v2.4</span></h1>
+<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v2.5</span></h1>
 <div class="metrics">
   <div class="metric"><div class="metric-label">Con stock</div><div class="metric-value" id="m-items">0</div></div>
   <div class="metric"><div class="metric-label">OC pendientes</div><div class="metric-value info" id="m-oc">0</div></div>
@@ -1671,8 +1671,17 @@ function eliminarArticulo(ref){
       ref, name:(it?it.name:ref), cat:(it?it.cat:''), equipo:'', min:1,
       precio_ars:0, precio_usd:0, stock:{}, eliminado:true
     },{onConflict:'ref'}).then(({error})=>{
-      if(error) console.error('Error eliminando:',error);
-      else console.log('Eliminado:',ref);
+      if(error){
+        console.error('Error eliminando:',error);
+        const msg=String(error.message||'');
+        if(msg.toLowerCase().includes('eliminado')||msg.toLowerCase().includes('column')){
+          alert('No se pudo eliminar de forma definitiva.\n\nFalta crear la columna en Supabase. Ejecutá:\n\nalter table inventario add column if not exists eliminado boolean default false;');
+        } else {
+          alert('No se pudo eliminar en Supabase:\n'+msg);
+        }
+      } else {
+        console.log('Eliminado:',ref);
+      }
     });
   }
   document.getElementById('stock-modal')?.remove();
