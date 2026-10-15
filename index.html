@@ -112,7 +112,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 </div>
 
 <div class="wrap" id="app-wrap" style="display:none">
-<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v2.6</span></h1>
+<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v2.7</span></h1>
 <div class="metrics">
   <div class="metric"><div class="metric-label">Con stock</div><div class="metric-value" id="m-items">0</div></div>
   <div class="metric"><div class="metric-label">OC pendientes</div><div class="metric-value info" id="m-oc">0</div></div>
@@ -1451,7 +1451,7 @@ async function loadFromSupabase(){
   if(!syncEnabled||!supabase_client) return;
   try{
     // Load inventory - replace local data with Supabase data
-    const {data:inv}=await supabase_client.from('inventario').select('*');
+    const {data:inv}=await supabase_client.from('inventario').select('*').limit(20000);
     if(inv&&inv.length>0){
       inv.forEach(row=>{
         // Artículos marcados como eliminados: sacarlos del catálogo y del inventario
@@ -1472,19 +1472,19 @@ async function loadFromSupabase(){
       });
     }
     // Load OC
-    const {data:ocs}=await supabase_client.from('oc').select('*').eq('status','pendiente');
+    const {data:ocs}=await supabase_client.from('oc').select('*').eq('status','pendiente').limit(20000);
     if(ocs&&ocs.length>0){
       ocList=ocs.map(o=>({id:o.id,num:o.num,prov:o.prov,prov_cod:o.prov_cod||'',fecha:o.fecha||'',dest:o.dest||'Berazategui',items:o.items||[],status:o.status,generaStock:o.genera_stock!==false,created:o.created_at}));
     }
     // Load envíos pendientes de despachar
-    const {data:envs}=await supabase_client.from('envios_pendientes').select('*').eq('status','pendiente');
+    const {data:envs}=await supabase_client.from('envios_pendientes').select('*').eq('status','pendiente').limit(20000);
     if(envs&&envs.length>0){
       ocPendientesEnviar=envs.map(e=>({dbId:e.id,id:e.id,ocNum:e.oc_num||'',items:e.items||[],
         desde:e.desde,hacia:e.hacia,ts:e.ts||'',status:e.status,
         generaStock:e.genera_stock!==false,usoDirecto:!!e.uso_directo,origen:e.origen||''}));
     }
     // Load transferencias
-    const {data:trs}=await supabase_client.from('transferencias').select('*').eq('status','pendiente');
+    const {data:trs}=await supabase_client.from('transferencias').select('*').eq('status','pendiente').limit(20000);
     if(trs&&trs.length>0){
       transfersPendientes=trs.map(t=>({id:t.id,ref:t.ref,name:t.name,cat:t.cat||'',qty:t.qty,desde:t.desde,hacia:t.hacia,quien:t.quien||'',ts:t.ts||'',status:t.status,usoDirecto:t.uso_directo,origen:t.origen||''}));
     }
@@ -1882,7 +1882,7 @@ function populateLoginOperadores(){
 async function loadOperadoresFromSupabase(){
   if(!syncEnabled||!supabase_client) return;
   try{
-    const {data}=await supabase_client.from('operadores_config').select('*');
+    const {data}=await supabase_client.from('operadores_config').select('*').limit(5000);
     if(data&&data.length>0){
       // Reset OPERADORES and rebuild from Supabase
       Object.keys(OPERADORES).forEach(k=>OPERADORES[k]=[]);
@@ -1914,7 +1914,7 @@ async function deleteOperadorFromSupabase(planta,operador){
 async function loadPinsFromSupabase(){
   if(!syncEnabled||!supabase_client) return;
   try{
-    const {data}=await supabase_client.from('operadores_pins').select('*');
+    const {data}=await supabase_client.from('operadores_pins').select('*').limit(5000);
     if(data&&data.length>0) data.forEach(r=>{operadorPins[r.operador]=r.pin;});
   }catch(e){console.log('Pins: usando defaults');}
 }
