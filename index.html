@@ -112,7 +112,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 </div>
 
 <div class="wrap" id="app-wrap" style="display:none">
-<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v2.7</span></h1>
+<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v3.0</span></h1>
 <div class="metrics">
   <div class="metric"><div class="metric-label">Con stock</div><div class="metric-value" id="m-items">0</div></div>
   <div class="metric"><div class="metric-label">OC pendientes</div><div class="metric-value info" id="m-oc">0</div></div>
@@ -1454,13 +1454,6 @@ async function loadFromSupabase(){
     const {data:inv}=await supabase_client.from('inventario').select('*').limit(20000);
     if(inv&&inv.length>0){
       inv.forEach(row=>{
-        // Artículos marcados como eliminados: sacarlos del catálogo y del inventario
-        if(row.eliminado||row.cat==='__ELIMINADO__'){
-          delete inventory[row.ref];
-          const ci=catalog.findIndex(c=>c.ref===row.ref);
-          if(ci>-1) catalog.splice(ci,1);
-          return;
-        }
         // Ensure all plantas exist in stock
         const stock=row.stock||{};
         PLANTAS.forEach(p=>{if(stock[p]===undefined) stock[p]=0;});
@@ -1477,7 +1470,7 @@ async function loadFromSupabase(){
       ocList=ocs.map(o=>({id:o.id,num:o.num,prov:o.prov,prov_cod:o.prov_cod||'',fecha:o.fecha||'',dest:o.dest||'Berazategui',items:o.items||[],status:o.status,generaStock:o.genera_stock!==false,created:o.created_at}));
     }
     // Load envíos pendientes de despachar
-    const {data:envs}=await supabase_client.from('envios_pendientes').select('*').eq('status','pendiente').limit(20000);
+    const {data:envs}=await supabase_client.from('envios_pendientes').select('*').eq('status','pendiente');
     if(envs&&envs.length>0){
       ocPendientesEnviar=envs.map(e=>({dbId:e.id,id:e.id,ocNum:e.oc_num||'',items:e.items||[],
         desde:e.desde,hacia:e.hacia,ts:e.ts||'',status:e.status,
@@ -1659,47 +1652,20 @@ function abrirModalStock(ref){
   }
 }
 
-async function eliminarArticulo(ref){
+function eliminarArticulo(ref){
   const it=inventory[ref];
-  const nombre=it?it.name:ref;
-  if(!confirm('\u00bfEliminar "'+nombre+'" del cat\u00e1logo?')) return;
-
-  if(!syncEnabled||!supabase_client){
-    alert('No hay conexi\u00f3n con la base. El art\u00edculo va a volver a aparecer al recargar.');
-    return;
-  }
-
-  // El catálogo viene escrito dentro de la app, así que borrar la fila no alcanza:
-  // el artículo reaparece al recargar. Se marca la fila como eliminada.
-  // Se usa la categoría como marca para no depender de columnas nuevas.
-  const MARCA='__ELIMINADO__';
-  const fila={ref, name:nombre, cat:MARCA, equipo:'', min:1,
-              precio_ars:0, precio_usd:0, stock:{}};
-  let {error}=await supabase_client.from('inventario').upsert(fila,{onConflict:'ref'});
-  if(error){
-    const r2=await supabase_client.from('inventario').update({cat:MARCA,stock:{}}).eq('ref',ref);
-    error=r2.error;
-  }
-  if(error){
-    console.error('Error eliminando:',error);
-    alert('No se pudo eliminar:\n'+String(error.message||error.hint||error));
-    return;
-  }
-
-  // Verificar contra la base antes de sacarlo de la pantalla
-  const {data:chk}=await supabase_client.from('inventario').select('ref,cat').eq('ref',ref).maybeSingle();
-  if(!chk||chk.cat!==MARCA){
-    alert('El borrado no qued\u00f3 guardado en la base.\nRevis\u00e1 los permisos de la tabla inventario.');
-    return;
-  }
-
-  const ci=catalog.findIndex(c=>c.ref===ref);
-  if(ci>-1) catalog.splice(ci,1);
+  if(!confirm('\u00bfEliminar "'+( it?it.name:ref)+'" del cat\u00e1logo?\nSe eliminar\u00e1 del inventario y de Supabase.')) return;
+  catalog.splice(catalog.findIndex(c=>c.ref===ref),1);
   delete inventory[ref];
+  if(syncEnabled&&supabase_client){
+    supabase_client.from('inventario').delete().eq('ref',ref).then(({error})=>{
+      if(error) console.error('Error eliminando:',error);
+      else console.log('Eliminado:',ref);
+    });
+  }
   document.getElementById('stock-modal')?.remove();
   updateMetrics();
   filterStock(document.getElementById('stock-search')?.value||'');
-  console.log('Eliminado y verificado:',ref);
 }
 
 function confirmarModalStock(ref){
@@ -1882,7 +1848,7 @@ function populateLoginOperadores(){
 async function loadOperadoresFromSupabase(){
   if(!syncEnabled||!supabase_client) return;
   try{
-    const {data}=await supabase_client.from('operadores_config').select('*').limit(5000);
+    const {data}=await supabase_client.from('operadores_config').select('*');
     if(data&&data.length>0){
       // Reset OPERADORES and rebuild from Supabase
       Object.keys(OPERADORES).forEach(k=>OPERADORES[k]=[]);
@@ -1914,7 +1880,7 @@ async function deleteOperadorFromSupabase(planta,operador){
 async function loadPinsFromSupabase(){
   if(!syncEnabled||!supabase_client) return;
   try{
-    const {data}=await supabase_client.from('operadores_pins').select('*').limit(5000);
+    const {data}=await supabase_client.from('operadores_pins').select('*');
     if(data&&data.length>0) data.forEach(r=>{operadorPins[r.operador]=r.pin;});
   }catch(e){console.log('Pins: usando defaults');}
 }
@@ -2493,7 +2459,7 @@ function renderOCPendientes(){
         </div>
         <div style="font-size:12px;margin-bottom:10px">${oc.items.map(it=>`<div style="padding:3px 0;border-bottom:0.5px solid var(--border)"><span class="badge b-gray">${esc(it.ref)}</span> ${esc(it.name.substring(0,35))} &times;${it.qty}${it.precioUSD?' &middot; u$s'+fmtUSD(it.precioUSD):it.precioARS?' &middot; $'+fmt(it.precioARS):''}</div>`).join('')}</div>
         <div style="display:flex;gap:8px">
-          ${oc.status==='recibida'?'<div style="flex:1;text-align:center;padding:10px;font-size:13px;color:var(--ok-text,#1B5E20);background:var(--ok-bg,#E8F5E9);border-radius:var(--r)">&#10003; Ya recibida</div>':`<button class="btn" onclick="recibirOC(${oc.id})" style="flex:1">&#10003; Confirmar recepción</button>`}
+          <button class="btn" onclick="recibirOC(${oc.id})" style="flex:1">&#10003; Confirmar recepción</button>
           <button onclick="eliminarOC(${oc.id})" style="background:none;border:0.5px solid var(--danger-text);color:var(--danger-text);border-radius:var(--r);padding:10px 14px;font-size:13px;cursor:pointer;flex-shrink:0">&#128465;</button>
         </div>
       </div>
@@ -2590,7 +2556,7 @@ function confirmarRecepcionModal(id){
   const oc=ocList.find(o=>Number(o.id)===Number(key));
   if(!oc){_procesandoOC.clear();return;}
 
-  // Una OC ya recibida por completo no se puede volver a recibir
+  // Una OC ya recibida por completo no se vuelve a recibir
   if(oc.status==='recibida'){
     alert('La OC '+oc.num+' ya figura como recibida.\n\nSi hace falta corregirla, deshacé la recepción desde el Historial.');
     document.getElementById('recepcion-modal')?.remove();
@@ -2599,7 +2565,6 @@ function confirmarRecepcionModal(id){
   }
 
   _confirmandoOC.add(key);
-  // Bloquear el botón por si el clic se repite antes de que se cierre el modal
   const btnOk=document.querySelector('#recepcion-modal button');
   if(btnOk){btnOk.disabled=true;btnOk.style.opacity='.6';btnOk.textContent='Registrando...';}
   setTimeout(()=>_confirmandoOC.delete(key),4000);
@@ -2668,7 +2633,7 @@ function confirmarRecepcionModal(id){
   if(esTotal){
     updateOCStatus(oc.num,'recibida');
   } else {
-    // Recepción parcial: guardar los ítems que quedan pendientes.
+    // Recepción parcial: guardar lo que queda pendiente.
     // Sin esto, al recargar la OC vuelve con las cantidades originales
     // y se puede volver a recibir la orden entera.
     saveOC(oc);
