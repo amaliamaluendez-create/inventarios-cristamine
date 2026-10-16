@@ -112,7 +112,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 </div>
 
 <div class="wrap" id="app-wrap" style="display:none">
-<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v4.0</span></h1>
+<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v4.2</span></h1>
 <div class="metrics">
   <div class="metric"><div class="metric-label">Con stock</div><div class="metric-value" id="m-items">0</div></div>
   <div class="metric"><div class="metric-label">OC pendientes</div><div class="metric-value info" id="m-oc">0</div></div>
@@ -1489,11 +1489,12 @@ async function loadFromSupabase(){
   if(!syncEnabled||!supabase_client) return;
   try{
     // Load inventory - replace local data with Supabase data
-    const {data:inv}=await supabase_client.from('inventario').select('*').limit(20000);
+    const inv=await traerTodo('inventario');
     if(inv&&inv.length>0){
       inv.forEach(row=>{
         // Artículo marcado como eliminado: sacarlo del catálogo y no cargarlo
-        if(row.cat==='__ELIMINADO__'){
+        if(row.cat===MARCA_ELIM){
+          refsEliminadas.add(row.ref);
           delete inventory[row.ref];
           const ci=catalog.findIndex(c=>c.ref===row.ref);
           if(ci>-1) catalog.splice(ci,1);
@@ -1508,33 +1509,36 @@ async function loadFromSupabase(){
           catalog.push({ref:row.ref,name:row.name,cat:row.cat,equipo:row.equipo||''});
         }
       });
+      // Redibujar ya: si alguna consulta posterior falla, el stock
+      // igual queda actualizado en pantalla
+      try{ filterStock(document.getElementById('stock-search')?.value||''); updateMetrics(); }catch(e){}
     }
     // Load OC
-    const {data:ocs}=await supabase_client.from('oc').select('*').eq('status','pendiente').limit(20000);
+    const ocs=await traerTodo('oc',q=>q.eq('status','pendiente'));
     if(ocs&&ocs.length>0){
       ocList=ocs.map(o=>({id:o.id,num:o.num,prov:o.prov,prov_cod:o.prov_cod||'',fecha:o.fecha||'',dest:o.dest||'Berazategui',items:o.items||[],status:o.status,generaStock:o.genera_stock!==false,created:o.created_at}));
     }
     // Load envíos pendientes de despachar
-    const {data:envs}=await supabase_client.from('envios_pendientes').select('*').eq('status','pendiente').limit(20000);
+    const envs=await traerTodo('envios_pendientes',q=>q.eq('status','pendiente'));
     if(envs&&envs.length>0){
       ocPendientesEnviar=envs.map(e=>({dbId:e.id,id:e.id,ocNum:e.oc_num||'',items:e.items||[],
         desde:e.desde,hacia:e.hacia,ts:e.ts||'',status:e.status,
         generaStock:e.genera_stock!==false,usoDirecto:!!e.uso_directo,origen:e.origen||''}));
     }
     // Load transferencias
-    const {data:trs}=await supabase_client.from('transferencias').select('*').eq('status','pendiente').limit(20000);
+    const trs=await traerTodo('transferencias',q=>q.eq('status','pendiente'));
     if(trs&&trs.length>0){
       transfersPendientes=trs.map(t=>({id:t.id,ref:t.ref,name:t.name,cat:t.cat||'',qty:t.qty,desde:t.desde,hacia:t.hacia,quien:t.quien||'',ts:t.ts||'',status:t.status,usoDirecto:t.uso_directo,origen:t.origen||''}));
     }
     // Load pedidos
-    const {data:peds}=await supabase_client.from('pedidos').select('*').order('id',{ascending:false}).limit(5000);
+    const peds=await traerTodo('pedidos',q=>q.order('id',{ascending:false}));
     if(peds&&peds.length>0){
       pedidos=peds.map(p=>({id:p.id,ref:p.ref,name:p.name,cat:p.cat||'',planta:p.planta,operador:p.operador,qty:p.qty,motivo:p.motivo||'',urgencia:p.urgencia||'normal',ts:p.ts||'',status:p.status,ocNum:p.oc_num||'',resolucion:p.resolucion||'',plantaOrigen:p.planta_origen||(function(r){
         const m=/desde\s+(.+)$/i.exec(r||''); return m?m[1].trim():'';
       })(p.resolucion)}));
     }
     // Load historial (last 200)
-    const {data:hist}=await supabase_client.from('movimientos').select('*').order('created_at',{ascending:false}).limit(3000);
+    const hist=await traerTodoLimitado('movimientos',q=>q.order('created_at',{ascending:false}),3000);
     if(hist&&hist.length>0){
       historial=hist.map(h=>({ts:h.ts,tipo:h.tipo,planta:h.planta,ref:h.ref,item:h.item,qty:h.qty,operador:h.operador||'',detalle:h.detalle||''})).reverse();
     }
@@ -1547,6 +1551,42 @@ async function loadFromSupabase(){
   }catch(e){
     console.error('Error cargando datos:',e);
   }
+}
+
+// Supabase devuelve como máximo 1000 filas por consulta, aunque se
+// pida un límite mayor. Esta función trae la tabla completa de a tandas.
+async function traerTodoLimitado(tabla, armarQuery, tope){
+  const PAGINA=1000;
+  let desde=0, todo=[];
+  while(todo.length<tope){
+    let q=supabase_client.from(tabla).select('*');
+    if(armarQuery) q=armarQuery(q);
+    const {data,error}=await q.range(desde,desde+PAGINA-1);
+    if(error){console.error('traerTodoLimitado '+tabla+':',error);break;}
+    if(!data||data.length===0) break;
+    todo=todo.concat(data);
+    if(data.length<PAGINA) break;
+    desde+=PAGINA;
+  }
+  console.log('traerTodoLimitado '+tabla+': '+todo.length+' filas');
+  return todo;
+}
+
+async function traerTodo(tabla, armarQuery){
+  const PAGINA=1000;
+  let desde=0, todo=[];
+  for(let i=0;i<50;i++){
+    let q=supabase_client.from(tabla).select('*');
+    if(armarQuery) q=armarQuery(q);
+    const {data,error}=await q.range(desde,desde+PAGINA-1);
+    if(error){console.error('traerTodo '+tabla+':',error);break;}
+    if(!data||data.length===0) break;
+    todo=todo.concat(data);
+    if(data.length<PAGINA) break;
+    desde+=PAGINA;
+  }
+  console.log('traerTodo '+tabla+': '+todo.length+' filas');
+  return todo;
 }
 
 async function saveInventarioItem(ref){
@@ -1712,6 +1752,9 @@ function abrirModalStock(ref){
 }
 
 const MARCA_ELIM='__ELIMINADO__';
+// Refs marcadas como eliminadas. Se filtran al dibujar, así no depende
+// de que la carga desde Supabase llegue hasta el final sin errores.
+const refsEliminadas=new Set();
 
 async function eliminarArticulo(ref){
   const it=inventory[ref];
@@ -1745,6 +1788,7 @@ async function eliminarArticulo(ref){
     return;
   }
 
+  refsEliminadas.add(ref);
   const ci=catalog.findIndex(c=>c.ref===ref);
   if(ci>-1) catalog.splice(ci,1);
   delete inventory[ref];
@@ -2244,7 +2288,7 @@ function renderStockListFlat(entries){
 
 function filterStock(q){
   // Build entries from catalog (all items) merged with inventory data
-  let e=catalog.map(cat=>{
+  let e=catalog.filter(c=>!refsEliminadas.has(c.ref)).map(cat=>{
     const inv=inventory[cat.ref]||{name:cat.name,cat:cat.cat,equipo:cat.equipo||'',min:1,precioARS:0,precioUSD:0,stock:Object.fromEntries(PLANTAS.map(p=>[p,0]))};
     return [cat.ref, inv];
   });
