@@ -112,7 +112,7 @@ h1{font-size:14px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
 </div>
 
 <div class="wrap" id="app-wrap" style="display:none">
-<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v3.6</span></h1>
+<h1>Inventario Cristamine S.A. <span style="font-size:10px;font-weight:400;color:var(--text2);vertical-align:middle">v4.0</span></h1>
 <div class="metrics">
   <div class="metric"><div class="metric-label">Con stock</div><div class="metric-value" id="m-items">0</div></div>
   <div class="metric"><div class="metric-label">OC pendientes</div><div class="metric-value info" id="m-oc">0</div></div>
@@ -1069,7 +1069,7 @@ function searchPedidoItem(q){
   res.innerHTML=m.map((it,i)=>`<div class="sr-item" onclick="selectPedidoItem(${catalog.indexOf(it)})">
     <span class="sr-ref">${esc(it.ref)}</span>${esc(it.name)}
   </div>`).join('')+
-  `<div class="sr-item" onclick="selectPedidoLibre('${q.replace(/'/g,"\'")}'')" style="color:var(--text2);font-style:italic">
+  `<div class="sr-item" onclick="selectPedidoLibre('${q.replace(/'/g,"\'")}')" style="color:var(--text2);font-style:italic">
     + Pedir: "<strong>${esc(q)}</strong>" (escribir directo)
   </div>`;
 }
@@ -1136,6 +1136,34 @@ function registrarPedido(){
 }
 
 // Al enviar el pedido avisa si hay stock y ofrece resolverlo en el momento
+// Encuentra el artículo del pedido. Si no tiene referencia (se escribió
+// a mano), lo busca por nombre y deja la ref guardada en el pedido.
+function resolverArticuloPedido(p){
+  if(p.ref&&inventory[p.ref]) return inventory[p.ref];
+  const q=String(p.name||'').trim().toLowerCase();
+  if(q.length>2){
+    let hit=Object.keys(inventory).find(k=>String(inventory[k].name||'').trim().toLowerCase()===q);
+    if(!hit) hit=Object.keys(inventory).find(k=>String(inventory[k].name||'').toLowerCase().includes(q));
+    if(!hit){
+      const pal=q.split(/\s+/).filter(w=>w.length>3);
+      if(pal.length) hit=Object.keys(inventory).find(k=>{
+        const n=String(inventory[k].name||'').toLowerCase();
+        return pal.every(w=>n.includes(w));
+      });
+    }
+    if(hit){ p.ref=hit; return inventory[hit]; }
+  }
+  return null;
+}
+
+// Plantas (distintas de la del pedido) que tienen stock del artículo
+function plantasConStock(p){
+  const it=resolverArticuloPedido(p);
+  if(!it) return [];
+  return PLANTAS.filter(pl=>pl!==p.planta&&(it.stock[pl]||0)>0)
+    .map(pl=>({pl,q:it.stock[pl]||0})).sort((a,b)=>b.q-a.q);
+}
+
 function chequearStockPedido(p){
   // Si el pedido no tiene ref (se escribió a mano), buscar el artículo por nombre
   if(!p.ref||!inventory[p.ref]){
@@ -1191,10 +1219,9 @@ function encolarEnvioPedido(id){
   document.getElementById('aviso-pedido')?.remove();
   const p=pedidos.find(x=>Number(x.id)===Number(id));
   if(!p) return;
-  const it=inventory[p.ref];
+  const it=resolverArticuloPedido(p);
   if(!it){alert('El artículo no está en el inventario.');return;}
-  const otras=PLANTAS.filter(pl=>pl!==p.planta&&(it.stock[pl]||0)>0)
-    .map(pl=>({pl,q:it.stock[pl]||0})).sort((a,b)=>b.q-a.q);
+  const otras=plantasConStock(p);
   if(!otras.length){alert('Ya no hay stock en otras plantas.');return;}
   let desde=otras[0].pl;
   if(otras.length>1){
@@ -1344,9 +1371,7 @@ function resolverPedido(id){
   } else if(v==='stock'){
     res='Entregado de stock de '+p.planta;
   } else if(v==='transfer'){
-    const it=inventory[p.ref];
-    const otras=(it?PLANTAS.filter(pl=>pl!==p.planta&&(it.stock[pl]||0)>0)
-      .map(pl=>({pl,q:it.stock[pl]||0})).sort((a,b)=>b.q-a.q):[]);
+    const otras=plantasConStock(p);
     const sug=otras.length?otras[0].pl:'Berazategui';
     const d=prompt('\u00bfDesde qu\u00e9 planta se env\u00eda?'+
       (otras.length?'\n\n'+otras.map(x=>'\u00b7 '+x.pl+' ('+x.q+' u.)').join('\n'):''),sug);
@@ -1467,6 +1492,13 @@ async function loadFromSupabase(){
     const {data:inv}=await supabase_client.from('inventario').select('*').limit(20000);
     if(inv&&inv.length>0){
       inv.forEach(row=>{
+        // Artículo marcado como eliminado: sacarlo del catálogo y no cargarlo
+        if(row.cat==='__ELIMINADO__'){
+          delete inventory[row.ref];
+          const ci=catalog.findIndex(c=>c.ref===row.ref);
+          if(ci>-1) catalog.splice(ci,1);
+          return;
+        }
         // Ensure all plantas exist in stock
         const stock=row.stock||{};
         PLANTAS.forEach(p=>{if(stock[p]===undefined) stock[p]=0;});
@@ -1483,7 +1515,7 @@ async function loadFromSupabase(){
       ocList=ocs.map(o=>({id:o.id,num:o.num,prov:o.prov,prov_cod:o.prov_cod||'',fecha:o.fecha||'',dest:o.dest||'Berazategui',items:o.items||[],status:o.status,generaStock:o.genera_stock!==false,created:o.created_at}));
     }
     // Load envíos pendientes de despachar
-    const {data:envs}=await supabase_client.from('envios_pendientes').select('*').eq('status','pendiente');
+    const {data:envs}=await supabase_client.from('envios_pendientes').select('*').eq('status','pendiente').limit(20000);
     if(envs&&envs.length>0){
       ocPendientesEnviar=envs.map(e=>({dbId:e.id,id:e.id,ocNum:e.oc_num||'',items:e.items||[],
         desde:e.desde,hacia:e.hacia,ts:e.ts||'',status:e.status,
@@ -1495,12 +1527,14 @@ async function loadFromSupabase(){
       transfersPendientes=trs.map(t=>({id:t.id,ref:t.ref,name:t.name,cat:t.cat||'',qty:t.qty,desde:t.desde,hacia:t.hacia,quien:t.quien||'',ts:t.ts||'',status:t.status,usoDirecto:t.uso_directo,origen:t.origen||''}));
     }
     // Load pedidos
-    const {data:peds}=await supabase_client.from('pedidos').select('*').order('id',{ascending:false}).limit(300);
+    const {data:peds}=await supabase_client.from('pedidos').select('*').order('id',{ascending:false}).limit(5000);
     if(peds&&peds.length>0){
-      pedidos=peds.map(p=>({id:p.id,ref:p.ref,name:p.name,cat:p.cat||'',planta:p.planta,operador:p.operador,qty:p.qty,motivo:p.motivo||'',urgencia:p.urgencia||'normal',ts:p.ts||'',status:p.status,ocNum:p.oc_num||'',resolucion:p.resolucion||'',plantaOrigen:p.planta_origen||''}));
+      pedidos=peds.map(p=>({id:p.id,ref:p.ref,name:p.name,cat:p.cat||'',planta:p.planta,operador:p.operador,qty:p.qty,motivo:p.motivo||'',urgencia:p.urgencia||'normal',ts:p.ts||'',status:p.status,ocNum:p.oc_num||'',resolucion:p.resolucion||'',plantaOrigen:p.planta_origen||(function(r){
+        const m=/desde\s+(.+)$/i.exec(r||''); return m?m[1].trim():'';
+      })(p.resolucion)}));
     }
     // Load historial (last 200)
-    const {data:hist}=await supabase_client.from('movimientos').select('*').order('created_at',{ascending:false}).limit(200);
+    const {data:hist}=await supabase_client.from('movimientos').select('*').order('created_at',{ascending:false}).limit(3000);
     if(hist&&hist.length>0){
       historial=hist.map(h=>({ts:h.ts,tipo:h.tipo,planta:h.planta,ref:h.ref,item:h.item,qty:h.qty,operador:h.operador||'',detalle:h.detalle||''})).reverse();
     }
@@ -1599,7 +1633,19 @@ async function updatePedidoStatus(id,status,ocNum,resolucion,plantaOrigen){
     const upd={status,oc_num:ocNum||null};
     if(resolucion!==undefined) upd.resolucion=resolucion||null;
     if(plantaOrigen!==undefined) upd.planta_origen=plantaOrigen||null;
-    const {error}=await supabase_client.from('pedidos').update(upd).eq('id',id);
+    let {error}=await supabase_client.from('pedidos').update(upd).eq('id',id);
+    // Si alguna columna todavía no existe en la base, reintentar sin ella
+    if(error){
+      console.warn('updatePedidoStatus: reintento sin columnas extra —',error.message||error);
+      delete upd.planta_origen;
+      let r=await supabase_client.from('pedidos').update(upd).eq('id',id);
+      error=r.error;
+      if(error){
+        delete upd.resolucion;
+        r=await supabase_client.from('pedidos').update(upd).eq('id',id);
+        error=r.error;
+      }
+    }
     if(error) console.error('updatePedidoStatus error:',error);
   }catch(e){console.error('Error actualizando pedido:',e);}
 }
@@ -1665,17 +1711,43 @@ function abrirModalStock(ref){
   }
 }
 
-function eliminarArticulo(ref){
+const MARCA_ELIM='__ELIMINADO__';
+
+async function eliminarArticulo(ref){
   const it=inventory[ref];
-  if(!confirm('\u00bfEliminar "'+( it?it.name:ref)+'" del cat\u00e1logo?\nSe eliminar\u00e1 del inventario y de Supabase.')) return;
-  catalog.splice(catalog.findIndex(c=>c.ref===ref),1);
-  delete inventory[ref];
-  if(syncEnabled&&supabase_client){
-    supabase_client.from('inventario').delete().eq('ref',ref).then(({error})=>{
-      if(error) console.error('Error eliminando:',error);
-      else console.log('Eliminado:',ref);
-    });
+  const nombre=it?it.name:ref;
+  if(!confirm('\u00bfEliminar "'+nombre+'" del cat\u00e1logo?')) return;
+
+  if(!syncEnabled||!supabase_client){
+    alert('No hay conexi\u00f3n con la base. El art\u00edculo volver\u00eda a aparecer al recargar.');
+    return;
   }
+
+  // El cat\u00e1logo viene escrito dentro de la app, as\u00ed que borrar la fila no alcanza:
+  // el art\u00edculo reaparece al recargar. Se deja la fila marcada como eliminada.
+  const fila={ref, name:nombre, cat:MARCA_ELIM, equipo:'', min:1,
+              precio_ars:0, precio_usd:0, stock:{}};
+  let {error}=await supabase_client.from('inventario').upsert(fila,{onConflict:'ref'});
+  if(error){
+    const r2=await supabase_client.from('inventario').update({cat:MARCA_ELIM,stock:{}}).eq('ref',ref);
+    error=r2.error;
+  }
+  if(error){
+    console.error('Error eliminando:',error);
+    alert('No se pudo eliminar:\n'+String(error.message||error.hint||error));
+    return;
+  }
+
+  // Verificar contra la base antes de sacarlo de la pantalla
+  const {data:chk}=await supabase_client.from('inventario').select('ref,cat').eq('ref',ref).maybeSingle();
+  if(!chk||chk.cat!==MARCA_ELIM){
+    alert('El borrado no qued\u00f3 guardado en la base.\nRevis\u00e1 los permisos de la tabla inventario.');
+    return;
+  }
+
+  const ci=catalog.findIndex(c=>c.ref===ref);
+  if(ci>-1) catalog.splice(ci,1);
+  delete inventory[ref];
   document.getElementById('stock-modal')?.remove();
   updateMetrics();
   filterStock(document.getElementById('stock-search')?.value||'');
@@ -1861,7 +1933,7 @@ function populateLoginOperadores(){
 async function loadOperadoresFromSupabase(){
   if(!syncEnabled||!supabase_client) return;
   try{
-    const {data}=await supabase_client.from('operadores_config').select('*');
+    const {data}=await supabase_client.from('operadores_config').select('*').limit(5000);
     if(data&&data.length>0){
       // Reset OPERADORES and rebuild from Supabase
       Object.keys(OPERADORES).forEach(k=>OPERADORES[k]=[]);
@@ -1893,7 +1965,7 @@ async function deleteOperadorFromSupabase(planta,operador){
 async function loadPinsFromSupabase(){
   if(!syncEnabled||!supabase_client) return;
   try{
-    const {data}=await supabase_client.from('operadores_pins').select('*');
+    const {data}=await supabase_client.from('operadores_pins').select('*').limit(5000);
     if(data&&data.length>0) data.forEach(r=>{operadorPins[r.operador]=r.pin;});
   }catch(e){console.log('Pins: usando defaults');}
 }
@@ -2342,7 +2414,7 @@ function renderOCPendientesEnviar(){
   // Solo mostrar si sos la planta que tiene que despachar
   const pend=ocPendientesEnviar.filter(o=>o.status==='pendiente'&&(activePlanta==='Todas'||o.desde===activePlanta));
   // Pedidos internos esperando despacho desde esta planta
-  const pedEnv=pedidos.filter(p=>p.status==='pendiente_envio'&&(activePlanta==='Todas'||p.plantaOrigen===activePlanta));
+  const pedEnv=pedidos.filter(p=>p.status==='pendiente_envio'&&(activePlanta==='Todas'||!p.plantaOrigen||p.plantaOrigen===activePlanta));
   if(!pend.length&&!pedEnv.length){
     if(card) card.style.display='none';
     el.innerHTML='<div class="empty">Sin envíos pendientes.</div>';
@@ -2577,6 +2649,7 @@ function confirmarRecepcionModal(id){
     return;
   }
 
+  const _movsNuevos=[]; // movimientos creados en esta recepción
   _confirmandoOC.add(key);
   const btnOk=document.querySelector('#recepcion-modal button');
   if(btnOk){btnOk.disabled=true;btnOk.style.opacity='.6';btnOk.textContent='Registrando...';}
@@ -2625,14 +2698,14 @@ function confirmarRecepcionModal(id){
         if(it.precioUSD) inventory[it.ref].precioUSD=it.precioUSD;
       });
       const tipoEntrada=esTotal?'Entrada':'Entrada parcial';
-      historial.push({ts:now(),tipo:tipoEntrada,planta,ref:'OC '+oc.num,item:'Recepción OC'+(esTotal?'':' (parcial)'),qty:totalRecibido,operador,detalle:(oc.prov||'')+' → '+planta+(totalPendiente>0?' · Falta: '+totalPendiente+' u.':'')});
+      _movsNuevos.push({ts:now(),tipo:tipoEntrada,planta,ref:'OC '+oc.num,item:'Recepción OC'+(esTotal?'':' (parcial)'),qty:totalRecibido,operador,detalle:(oc.prov||'')+' → '+planta+(totalPendiente>0?' · Falta: '+totalPendiente+' u.':'')});
       if(planta.trim()!==oc.dest.trim()){
         itemsRecibidos.forEach(it=>{inventory[it.ref].stock[planta]-=it.qty;});
         {const _e={id:nextId(),ocNum:oc.num,items:itemsRecibidos,desde:planta,hacia:oc.dest,ts:now(),status:'pendiente',generaStock:true,origen:'OC '+oc.num};
         ocPendientesEnviar.push(_e); saveEnvioPendiente(_e);}
       }
     } else {
-      historial.push({ts:now(),tipo:'Uso directo',planta,ref:'OC '+oc.num,item:'Recepción OC',qty:totalRecibido,operador,detalle:'Uso directo → '+planta+(totalPendiente>0?' · Falta: '+totalPendiente+' u.':'')});
+      _movsNuevos.push({ts:now(),tipo:'Uso directo',planta,ref:'OC '+oc.num,item:'Recepción OC',qty:totalRecibido,operador,detalle:'Uso directo → '+planta+(totalPendiente>0?' · Falta: '+totalPendiente+' u.':'')});
       if(planta.trim()!==oc.dest.trim()){
         {const _e={id:nextId(),ocNum:oc.num,items:itemsRecibidos,desde:planta,hacia:oc.dest,ts:now(),status:'pendiente',generaStock:false,usoDirecto:true,origen:'OC '+oc.num};
         ocPendientesEnviar.push(_e); saveEnvioPendiente(_e);}
@@ -2642,7 +2715,10 @@ function confirmarRecepcionModal(id){
 
   // Save to Supabase
   itemsRecibidos.forEach(it=>saveInventarioItem(it.ref));
-  historial.slice(-3).forEach(mov=>saveMovimiento(mov));
+  // Guardar SOLO los movimientos creados en esta recepción.
+  // Antes usaba historial.slice(-3), que volvía a insertar los dos anteriores
+  // y dejaba movimientos duplicados en la base.
+  _movsNuevos.forEach(mov=>{historial.push(mov);saveMovimiento(mov);});
   if(esTotal){
     updateOCStatus(oc.num,'recibida');
   } else {
